@@ -15,6 +15,9 @@ workflows:
       - name: Adicionar permissões (câmera, fotos, arquivos)
         script: |
           perl -0777 -pi -e 's#<application#<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <application#' android/app/src/main/AndroidManifest.xml
+      - name: Ajustar compileSdk para 36
+        script: |
+          perl -pi -e 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
       - name: Instalar dependências
         script: |
           flutter pub get
