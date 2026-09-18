@@ -5,9 +5,13 @@ workflows:
     environment:
       flutter: stable
     scripts:
-      - name: Gerar pasta Android
+      - name: Gerar pasta Android (sem sobrescrever o código)
         script: |
-          flutter create . --platforms=android
+          if [ ! -d "android" ]; then
+            flutter create --platforms=android --project-name auditoria_5s --org com.suaempresa temp_scaffold
+            cp -R temp_scaffold/android .
+            rm -rf temp_scaffold
+          fi
       - name: Adicionar permissões (câmera, fotos, arquivos)
         script: |
           perl -0777 -pi -e 's#<application#<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <application#' android/app/src/main/AndroidManifest.xml
