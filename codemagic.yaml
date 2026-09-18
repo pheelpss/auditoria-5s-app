@@ -1,0 +1,21 @@
+workflows:
+  android-workflow:
+    name: Android Build
+    max_build_duration: 30
+    environment:
+      flutter: stable
+    scripts:
+      - name: Gerar pasta Android
+        script: |
+          flutter create . --platforms=android
+      - name: Adicionar permissões (câmera, fotos, arquivos)
+        script: |
+          sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <application#' android/app/src/main/AndroidManifest.xml
+      - name: Instalar dependências
+        script: |
+          flutter pub get
+      - name: Compilar APK
+        script: |
+          flutter build apk --release
+    artifacts:
+      - build/**/outputs/**/*.apk
