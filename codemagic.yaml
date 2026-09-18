@@ -10,7 +10,7 @@ workflows:
           flutter create . --platforms=android
       - name: Adicionar permissões (câmera, fotos, arquivos)
         script: |
-          sed -i 's#<application#<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <application#' android/app/src/main/AndroidManifest.xml
+          perl -0777 -pi -e 's#<application#<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <application#' android/app/src/main/AndroidManifest.xml
       - name: Instalar dependências
         script: |
           flutter pub get
