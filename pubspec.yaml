@@ -15,7 +15,7 @@ dependencies:
   path: ^1.8.3
   path_provider: ^2.1.1
   image_picker: ^1.0.7
-  file_picker: ^10.3.10
+  file_picker: ^6.1.1
   archive: ^3.4.10
   image: ^4.1.7
   xml: ^6.5.0
@@ -23,6 +23,8 @@ dependencies:
   percent_indicator: ^4.2.3
   uuid: ^4.3.3
   open_filex: ^4.4.0
+  share_plus: ^7.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

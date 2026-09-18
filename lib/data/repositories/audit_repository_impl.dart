@@ -84,6 +84,34 @@ class AuditRepositoryImpl implements AuditRepository {
     });
   }
 
+  @override
+  Future<Audit?> getPreviousAudit({
+    required String area,
+    required DateTime beforeDate,
+    String? excludeId,
+  }) async {
+    final trimmedArea = area.trim();
+    if (trimmedArea.isEmpty) return null;
+
+    final db = await _localDb.database;
+    final where = <String>['LOWER(TRIM(area)) = ?', 'data < ?'];
+    final args = <Object?>[trimmedArea.toLowerCase(), beforeDate.toIso8601String()];
+    if (excludeId != null) {
+      where.add('id != ?');
+      args.add(excludeId);
+    }
+
+    final rows = await db.query(
+      'audits',
+      where: where.join(' AND '),
+      whereArgs: args,
+      orderBy: 'data DESC',
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return _hydrate(db, rows.first);
+  }
+
   Future<Audit> _hydrate(Database db, Map<String, Object?> row) async {
     final itemRows = await db.query('audit_items', where: 'auditId = ?', whereArgs: [row['id']]);
     final evRows = await db.query('evidences', where: 'auditId = ?', whereArgs: [row['id']]);

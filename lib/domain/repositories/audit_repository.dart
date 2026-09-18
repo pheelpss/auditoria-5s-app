@@ -16,4 +16,13 @@ abstract class AuditRepository {
   Future<List<Audit>> getAudits({AuditFilter filter = const AuditFilter()});
   Future<Audit?> getAuditById(String id);
   Future<void> deleteAudit(String id);
+
+  /// Busca a auditoria mais recente da mesma área, feita antes de
+  /// [beforeDate] — usada para comparar a nota do mês atual com a do
+  /// mês anterior em tempo real.
+  Future<Audit?> getPreviousAudit({
+    required String area,
+    required DateTime beforeDate,
+    String? excludeId,
+  });
 }

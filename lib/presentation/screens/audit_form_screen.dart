@@ -26,7 +26,7 @@ class AuditFormScreen extends StatelessWidget {
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
     try {
-      final file = await DocxGenerator.generate(audit);
+      final file = await DocxGenerator.generate(audit, previousAudit: provider.previous);
       await provider.saveCurrent();
       if (!context.mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
@@ -86,6 +86,15 @@ class AuditFormScreen extends StatelessWidget {
                   const Text('Resultado Geral', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 10),
                   ScoreIndicator(label: 'Nota Geral 5S', score: audit.notaGeral, big: true),
+                  if (provider.previousNotaGeral != null) ...[
+                    const SizedBox(height: 10),
+                    const Divider(height: 1),
+                    const SizedBox(height: 10),
+                    ScoreIndicator(
+                      label: 'Nota Geral do mês anterior',
+                      score: provider.previousNotaGeral,
+                    ),
+                  ],
                 ],
               ),
             ),

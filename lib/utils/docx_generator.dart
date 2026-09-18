@@ -17,7 +17,7 @@ import '../domain/entities/evidence.dart';
 /// resultado destacada, seguida das evidências fotográficas com a
 /// orientação e proporção corretas.
 class DocxGenerator {
-  static Future<File> generate(Audit audit) async {
+  static Future<File> generate(Audit audit, {Audit? previousAudit}) async {
     final builder = _DocxBuilder();
 
     builder.addTitle('PROGRAMA 5S - ÁREAS FABRIS');
@@ -34,12 +34,27 @@ class DocxGenerator {
 
     builder.addSpacerSmall();
 
+    final colunaAnterior = previousAudit != null
+        ? 'NOTA ${previousAudit.mesReferencia.substring(0, 3).toUpperCase()}${DateFormat('yy').format(previousAudit.data)}'
+        : null;
+    final colunaAtual =
+        'NOTA ${audit.mesReferencia.substring(0, 3).toUpperCase()}${DateFormat('yy').format(audit.data)}';
+
     for (final cat in fiveSCategories) {
       final media = audit.averageForCategory(cat.code);
+      final mediaAnterior = previousAudit?.averageForCategory(cat.code);
       final rows = <List<String>>[];
       for (final item in audit.itemsFor(cat.code)) {
+        final notaAnterior = previousAudit == null
+            ? null
+            : previousAudit
+                .itemsFor(cat.code)
+                .firstWhere((i) => i.number == item.number,
+                    orElse: () => item)
+                .score;
         rows.add([
           '${item.number} ${item.question}',
+          if (previousAudit != null) notaAnterior?.toString() ?? '-',
           item.score?.toString() ?? '-',
         ]);
       }
@@ -48,6 +63,11 @@ class DocxGenerator {
         rows: rows,
         resultLabel: 'RESULTADO ${cat.code}',
         resultValue: media != null ? media.toStringAsFixed(2) : '-',
+        resultValueAnterior: previousAudit != null
+            ? (mediaAnterior != null ? mediaAnterior.toStringAsFixed(2) : '-')
+            : null,
+        colunaAnteriorLabel: colunaAnterior,
+        colunaAtualLabel: colunaAtual,
       );
 
       final photos = audit.evidencesFor(cat.code).where((e) => e.type == EvidenceType.photo);
@@ -71,10 +91,16 @@ class DocxGenerator {
     }
 
     final nota = audit.notaGeral;
+    final notaAnteriorGeral = previousAudit?.notaGeral;
     builder.addFinalResult(
       notaLabel: 'NOTA 5S (média geral)',
       notaValue: nota != null ? nota.toStringAsFixed(2) : '-',
       classificacao: audit.classificacao,
+      notaAnteriorLabel: previousAudit != null ? 'Mês anterior ($colunaAnterior)' : null,
+      notaAnteriorValue: previousAudit != null
+          ? (notaAnteriorGeral != null ? notaAnteriorGeral.toStringAsFixed(2) : '-')
+          : null,
+      classificacaoAnterior: previousAudit?.classificacao,
     );
 
     builder.addLegend();
@@ -176,51 +202,96 @@ class _DocxBuilder {
   String _emptyCell(int width) =>
       '<w:tc><w:tcPr><w:tcW w:w="$width" w:type="dxa"/></w:tcPr>${_paragraphXml('', sizePt: 9, spacingAfter: 0)}</w:tc>';
 
-  /// Tabela de um senso (1S..5S): título mesclado no topo, uma linha por
-  /// pergunta (pergunta + nota) e a linha de resultado destacada — igual
-  /// ao formulário físico de referência.
+  /// Tabela de um senso (1S..5S): título mesclado no topo, cabeçalho de
+  /// colunas (com o rótulo do mês, se houver comparação), uma linha por
+  /// pergunta (pergunta + nota[s]) e a linha de resultado destacada —
+  /// igual ao formulário físico de referência.
   void addCategoryTable({
     required String title,
     required List<List<String>> rows,
     required String resultLabel,
     required String resultValue,
+    String? resultValueAnterior,
+    String? colunaAnteriorLabel,
+    required String colunaAtualLabel,
   }) {
+    final temAnterior = colunaAnteriorLabel != null;
     final buffer = StringBuffer();
     buffer.write('<w:tbl>');
     buffer.write(_tblPrXml(borderColor: _borderColor, borderSz: 4));
-    buffer.write('<w:tblGrid><w:gridCol w:w="8300"/><w:gridCol w:w="900"/></w:tblGrid>');
+    if (temAnterior) {
+      buffer.write('<w:tblGrid><w:gridCol w:w="7400"/><w:gridCol w:w="900"/>'
+          '<w:gridCol w:w="900"/></w:tblGrid>');
+    } else {
+      buffer.write('<w:tblGrid><w:gridCol w:w="8300"/><w:gridCol w:w="900"/></w:tblGrid>');
+    }
+    final totalWidth = temAnterior ? 9200 : 9200;
+    final questionWidth = temAnterior ? 7400 : 8300;
 
     // Cabeçalho mesclado com o título do senso.
     buffer.write('<w:tr>');
-    buffer.write('<w:tc><w:tcPr><w:tcW w:w="9200" w:type="dxa"/><w:gridSpan w:val="2"/>'
+    buffer.write('<w:tc><w:tcPr><w:tcW w:w="$totalWidth" w:type="dxa"/>'
+        '<w:gridSpan w:val="${temAnterior ? 3 : 2}"/>'
         '<w:shd w:val="clear" w:fill="$_headerFill"/>'
         '<w:tcMar><w:top w:w="30" w:type="dxa"/><w:bottom w:w="30" w:type="dxa"/>'
         '<w:left w:w="80" w:type="dxa"/></w:tcMar></w:tcPr>');
     buffer.write(_paragraphXml(title, bold: true, sizePt: 9.5, spacingAfter: 0));
     buffer.write('</w:tc></w:tr>');
 
+    // Cabeçalho de colunas (Pergunta / Nota mês anterior / Nota mês atual).
+    buffer.write('<w:tr>');
+    buffer.write('<w:tc><w:tcPr><w:tcW w:w="$questionWidth" w:type="dxa"/>'
+        '<w:shd w:val="clear" w:fill="F2F2F2"/>'
+        '<w:tcMar><w:top w:w="20" w:type="dxa"/><w:bottom w:w="20" w:type="dxa"/>'
+        '<w:left w:w="80" w:type="dxa"/></w:tcMar></w:tcPr>');
+    buffer.write(_paragraphXml('', sizePt: 7, spacingAfter: 0));
+    buffer.write('</w:tc>');
+    if (temAnterior) {
+      buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+          '<w:shd w:val="clear" w:fill="F2F2F2"/><w:vAlign w:val="center"/></w:tcPr>');
+      buffer.write(_paragraphXml(colunaAnteriorLabel, bold: true, sizePt: 6.5, align: 'center', spacingAfter: 0));
+      buffer.write('</w:tc>');
+    }
+    buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+        '<w:shd w:val="clear" w:fill="F2F2F2"/><w:vAlign w:val="center"/></w:tcPr>');
+    buffer.write(_paragraphXml(colunaAtualLabel, bold: true, sizePt: 6.5, align: 'center', spacingAfter: 0));
+    buffer.write('</w:tc>');
+    buffer.write('</w:tr>');
+
     for (final row in rows) {
       buffer.write('<w:tr>');
-      buffer.write('<w:tc><w:tcPr><w:tcW w:w="8300" w:type="dxa"/>'
+      buffer.write('<w:tc><w:tcPr><w:tcW w:w="$questionWidth" w:type="dxa"/>'
           '<w:tcMar><w:top w:w="30" w:type="dxa"/><w:bottom w:w="30" w:type="dxa"/>'
           '<w:left w:w="80" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tcMar></w:tcPr>');
       buffer.write(_paragraphXml(row[0], sizePt: 8.5, spacingAfter: 0));
       buffer.write('</w:tc>');
+      if (temAnterior) {
+        buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+            '<w:vAlign w:val="center"/></w:tcPr>');
+        buffer.write(_paragraphXml(row[1], sizePt: 9, align: 'center', spacingAfter: 0));
+        buffer.write('</w:tc>');
+      }
       buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
           '<w:vAlign w:val="center"/></w:tcPr>');
-      buffer.write(_paragraphXml(row[1], sizePt: 9, bold: true, align: 'center', spacingAfter: 0));
+      buffer.write(_paragraphXml(row[temAnterior ? 2 : 1], sizePt: 9, bold: true, align: 'center', spacingAfter: 0));
       buffer.write('</w:tc>');
       buffer.write('</w:tr>');
     }
 
     // Linha de resultado, destacada.
     buffer.write('<w:tr>');
-    buffer.write('<w:tc><w:tcPr><w:tcW w:w="8300" w:type="dxa"/>'
+    buffer.write('<w:tc><w:tcPr><w:tcW w:w="$questionWidth" w:type="dxa"/>'
         '<w:shd w:val="clear" w:fill="$_resultFill"/>'
         '<w:tcMar><w:top w:w="30" w:type="dxa"/><w:bottom w:w="30" w:type="dxa"/>'
         '<w:left w:w="80" w:type="dxa"/></w:tcMar></w:tcPr>');
     buffer.write(_paragraphXml(resultLabel, bold: true, sizePt: 9, align: 'right', spacingAfter: 0));
     buffer.write('</w:tc>');
+    if (temAnterior) {
+      buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+          '<w:shd w:val="clear" w:fill="$_resultFill"/><w:vAlign w:val="center"/></w:tcPr>');
+      buffer.write(_paragraphXml(resultValueAnterior ?? '-', bold: true, sizePt: 9.5, align: 'center', spacingAfter: 0));
+      buffer.write('</w:tc>');
+    }
     buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
         '<w:shd w:val="clear" w:fill="$_resultFill"/><w:vAlign w:val="center"/></w:tcPr>');
     buffer.write(_paragraphXml(resultValue, bold: true, sizePt: 9.5, align: 'center', spacingAfter: 0));
@@ -232,25 +303,47 @@ class _DocxBuilder {
     _body.write(_paragraphXml('', sizePt: 2, spacingAfter: 0));
   }
 
-  /// Bloco final com a nota geral, classificação e destaque visual.
+  /// Bloco final com a nota geral, classificação e, se houver, a
+  /// comparação com o mês anterior.
   void addFinalResult({
     required String notaLabel,
     required String notaValue,
     required String classificacao,
+    String? notaAnteriorLabel,
+    String? notaAnteriorValue,
+    String? classificacaoAnterior,
   }) {
+    final temAnterior = notaAnteriorLabel != null;
     final buffer = StringBuffer();
     buffer.write('<w:tbl>');
     buffer.write(_tblPrXml(borderColor: _borderColor, borderSz: 6));
-    buffer.write('<w:tblGrid><w:gridCol w:w="4600"/><w:gridCol w:w="4600"/></w:tblGrid>');
+    if (temAnterior) {
+      buffer.write('<w:tblGrid><w:gridCol w:w="3067"/><w:gridCol w:w="3066"/>'
+          '<w:gridCol w:w="3067"/></w:tblGrid>');
+    } else {
+      buffer.write('<w:tblGrid><w:gridCol w:w="4600"/><w:gridCol w:w="4600"/></w:tblGrid>');
+    }
     buffer.write('<w:tr>');
-    buffer.write('<w:tc><w:tcPr><w:tcW w:w="4600" w:type="dxa"/>'
+    if (temAnterior) {
+      buffer.write('<w:tc><w:tcPr><w:tcW w:w="3067" w:type="dxa"/>'
+          '<w:shd w:val="clear" w:fill="F2F2F2"/>'
+          '<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/>'
+          '<w:left w:w="100" w:type="dxa"/></w:tcMar></w:tcPr>');
+      buffer.write(_paragraphXml(notaAnteriorLabel, bold: true, sizePt: 8.5, spacingAfter: 20));
+      buffer.write(_paragraphXml(notaAnteriorValue ?? '-', bold: true, sizePt: 16, spacingAfter: 4));
+      buffer.write(_paragraphXml(classificacaoAnterior ?? '-', sizePt: 9, spacingAfter: 0));
+      buffer.write('</w:tc>');
+    }
+    final notaWidth = temAnterior ? 3066 : 4600;
+    buffer.write('<w:tc><w:tcPr><w:tcW w:w="$notaWidth" w:type="dxa"/>'
         '<w:shd w:val="clear" w:fill="$_headerFill"/>'
         '<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/>'
         '<w:left w:w="100" w:type="dxa"/></w:tcMar></w:tcPr>');
     buffer.write(_paragraphXml(notaLabel, bold: true, sizePt: 10, spacingAfter: 20));
     buffer.write(_paragraphXml(notaValue, bold: true, sizePt: 20, spacingAfter: 0));
     buffer.write('</w:tc>');
-    buffer.write('<w:tc><w:tcPr><w:tcW w:w="4600" w:type="dxa"/>'
+    final classWidth = temAnterior ? 3067 : 4600;
+    buffer.write('<w:tc><w:tcPr><w:tcW w:w="$classWidth" w:type="dxa"/>'
         '<w:shd w:val="clear" w:fill="$_headerFill"/>'
         '<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/>'
         '<w:left w:w="100" w:type="dxa"/></w:tcMar></w:tcPr>');

@@ -14,6 +14,11 @@ class AuditProvider extends ChangeNotifier {
   Audit? _current;
   Audit? get current => _current;
 
+  /// Auditoria anterior da mesma área (mês anterior), usada só para
+  /// comparação em tempo real — nunca é editada.
+  Audit? _previous;
+  Audit? get previous => _previous;
+
   List<Audit> _history = [];
   List<Audit> get history => _history;
 
@@ -32,12 +37,15 @@ class AuditProvider extends ChangeNotifier {
       data: DateTime.now(),
       mesReferencia: _mesAtual(),
     );
+    _previous = null;
     notifyListeners();
   }
 
   void editAudit(Audit audit) {
     _current = audit;
+    _previous = null;
     notifyListeners();
+    _refreshPrevious();
   }
 
   String _mesAtual() {
@@ -59,6 +67,9 @@ class AuditProvider extends ChangeNotifier {
   }) {
     final a = _current;
     if (a == null) return;
+    final areaMudou = area != null && area.trim() != a.area.trim();
+    final dataMudou = data != null && data != a.data;
+
     if (responsavel != null) a.responsavel = responsavel;
     if (area != null) a.area = area;
     if (auditor != null) a.auditor = auditor;
@@ -67,7 +78,47 @@ class AuditProvider extends ChangeNotifier {
     if (mesReferencia != null) a.mesReferencia = mesReferencia;
     if (comentarios != null) a.comentarios = comentarios;
     notifyListeners();
+
+    if (areaMudou || dataMudou) {
+      _refreshPrevious();
+    }
   }
+
+  /// Busca (em segundo plano) a auditoria mais recente da mesma área
+  /// feita antes da data atual, para exibir a comparação mês a mês.
+  Future<void> _refreshPrevious() async {
+    final a = _current;
+    if (a == null || a.area.trim().isEmpty) {
+      _previous = null;
+      notifyListeners();
+      return;
+    }
+    final found = await repository.getPreviousAudit(
+      area: a.area,
+      beforeDate: a.data,
+      excludeId: a.id,
+    );
+    // Garante que o resultado ainda corresponde à auditoria em edição
+    // (evita condição de corrida se a área mudar de novo enquanto busca).
+    if (_current?.id == a.id) {
+      _previous = found;
+      notifyListeners();
+    }
+  }
+
+  double? previousAverageForCategory(String categoryCode) =>
+      _previous?.averageForCategory(categoryCode);
+
+  int? previousScoreFor(String categoryCode, String number) {
+    final p = _previous;
+    if (p == null) return null;
+    for (final item in p.itemsFor(categoryCode)) {
+      if (item.number == number) return item.score;
+    }
+    return null;
+  }
+
+  double? get previousNotaGeral => _previous?.notaGeral;
 
   void setScore(String categoryCode, String number, int score) {
     final a = _current;
