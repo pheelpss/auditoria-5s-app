@@ -125,6 +125,38 @@ class _HistoryScreenState extends State<HistoryScreen> {
       appBar: AppBar(
         title: const Text('Auditorias 5S'),
         actions: [
+          // Botão de Compartilhar / Importar
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.sync_alt_outlined),
+            tooltip: 'Sincronizar',
+            onSelected: (value) {
+              if (value == 'export') {
+                provider.exportData(context);
+              } else if (value == 'import') {
+                provider.importData(context);
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'export',
+                child: ListTile(
+                  leading: Icon(Icons.share),
+                  title: Text('Compartilhar Banco'),
+                  contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'import',
+                child: ListTile(
+                  leading: Icon(Icons.download),
+                  title: Text('Importar Auditorias'),
+                  contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.insights_outlined),
             tooltip: 'Indicadores',
