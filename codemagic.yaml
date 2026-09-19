@@ -36,13 +36,10 @@ workflows:
           </activity>
           EOF
           perl -0777 -pi -e 's#</activity>#`cat intent_filter.xml`#e' android/app/src/main/AndroidManifest.xml
-      - name: Ajustar compileSdk para 36 e Forçar JVM 17 Global
+      - name: Ajustar compileSdk para 36
         script: |
           perl -pi -e 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
-          
-          # Força a versão JVM 17 nativa no arquivo de propriedades do Android
-          echo "android.defaultConfig.javaCompileOptions.annotationProcessorOptions.includeCompileClasspath=true" >> android/gradle.properties
-      - name: Instalar dependencias e aplicar correcoes nos plugins
+      - name: Instalar dependencias e aplicar correcoes profundas nos plugins
         script: |
           flutter pub get
           
@@ -51,6 +48,15 @@ workflows:
           
           # 2. Conserta o erro do Namespace ausente
           find ~/.pub-cache/hosted -type f -name "build.gradle" | grep "receive_sharing_intent" | xargs perl -pi -e 's/android \{/android {\n    namespace "com.kasem.receive_sharing_intent"/g'
+          
+          # 3. Força o Java do receive_sharing_intent para 17 (Corrige o conflito JVM)
+          find ~/.pub-cache/hosted -type f -name "build.gradle" | grep "receive_sharing_intent" | xargs -I {} sh -c 'echo "
+          android {
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }" >> "{}"'
       - name: Compilar APK
         script: |
           flutter build apk --release
