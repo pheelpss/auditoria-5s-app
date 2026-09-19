@@ -39,11 +39,15 @@ workflows:
       - name: Ajustar compileSdk para 36
         script: |
           perl -pi -e 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
-      - name: Instalar dependencias e hackear JCenter
+      - name: Instalar dependencias e aplicar correcoes nos plugins
         script: |
           flutter pub get
-          # Esse comando entra na pasta de downloads do Flutter e conserta o bug do criador do plugin
+          
+          # 1. Conserta o erro do JCenter
           find ~/.pub-cache/hosted -name "build.gradle" -type f -exec perl -pi -e 's/jcenter\(\)/mavenCentral\(\)/g' {} +
+          
+          # 2. Conserta o erro do Namespace ausente
+          find ~/.pub-cache/hosted -type f -name "build.gradle" | grep "receive_sharing_intent" | xargs perl -pi -e 's/android \{/android {\n    namespace "com.kasem.receive_sharing_intent"/g'
       - name: Compilar APK
         script: |
           flutter build apk --release
