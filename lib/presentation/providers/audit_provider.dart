@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/entities/audit.dart';
 import '../../domain/entities/evidence.dart';
 import '../../domain/repositories/audit_repository.dart';
+import '../../domain/entities/audit_item.dart';
 
 /// Gerencia o estado da auditoria em edição e o histórico de auditorias
 /// já salvas. É o único ponto de acesso das telas ao [AuditRepository].
@@ -285,13 +286,15 @@ class AuditProvider extends ChangeNotifier {
       final appDir = await getApplicationDocumentsDirectory();
 
       for (final item in jsonList) {
-        final auditMap = item['audit'];
+        // Converte os dados brutos com TIPAGEM FORTE
+        final auditMap = item['audit'] as Map<String, dynamic>;
         final itemsList = item['items'] as List<dynamic>;
         final evidencesList = item['evidences'] as List<dynamic>;
 
+        // 1. Processa Evidências
         final restoredEvidences = <Evidence>[];
-        
-        for (final evMap in evidencesList) {
+        for (final evData in evidencesList) {
+          final evMap = evData as Map<String, dynamic>;
           final ev = Evidence.fromMap(evMap);
           final ext = ev.fileName.split('.').last;
           final mediaFile = archive.findFile('media/${ev.id}.$ext');
@@ -314,8 +317,14 @@ class AuditProvider extends ChangeNotifier {
           ));
         }
 
-        final restoredItems = itemsList.map((iMap) => AuditItem.fromMap(iMap)).toList();
+        // 2. Processa Items com Tipagem Forte para evitar erro de build
+        final restoredItems = <AuditItem>[];
+        for (final iData in itemsList) {
+          final iMap = iData as Map<String, dynamic>;
+          restoredItems.add(AuditItem.fromMap(iMap));
+        }
 
+        // 3. Monta a Auditoria final
         final audit = Audit.fromMap(
           auditMap,
           items: restoredItems,
