@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/constants/five_s_data.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/constants/setores.dart';
 import '../../domain/entities/audit.dart';
-import '../../domain/repositories/audit_repository.dart';
 import '../providers/audit_provider.dart';
-import 'history_screen.dart';
+import 'audit_form_screen.dart';
 
-/// Tela de indicadores: quantidade de auditorias por área, evolução
-/// mensal das notas, histórico completo e os mesmos filtros do
-/// histórico (mês, ano, área, auditor).
+/// Tela de Indicadores: mostra, mês a mês, quais setores da lista fixa
+/// ainda não foram auditados — tocar num setor pendente já abre uma
+/// nova auditoria com a área pré-preenchida.
 class IndicatorsScreen extends StatefulWidget {
   const IndicatorsScreen({super.key});
 
@@ -20,259 +17,145 @@ class IndicatorsScreen extends StatefulWidget {
 }
 
 class _IndicatorsScreenState extends State<IndicatorsScreen> {
-  Future<void> _openFilters() async {
-    final provider = context.read<AuditProvider>();
-    String? mes = provider.filter.mes;
-    int? ano = provider.filter.ano;
-    final areaCtrl = TextEditingController(text: provider.filter.area ?? '');
-    final auditorCtrl = TextEditingController(text: provider.filter.auditor ?? '');
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-          child: StatefulBuilder(
-            builder: (ctx, setModalState) => Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Filtrar indicadores', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<String?>(
-                  value: mes,
-                  decoration: const InputDecoration(labelText: 'Mês'),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('Todos')),
-                    ...mesesReferencia.map((m) => DropdownMenuItem(value: m, child: Text(m))),
-                  ],
-                  onChanged: (v) => setModalState(() => mes = v),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Ano (ex: 2026)'),
-                  keyboardType: TextInputType.number,
-                  controller: TextEditingController(text: ano?.toString() ?? ''),
-                  onChanged: (v) => ano = int.tryParse(v),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Área auditada'),
-                  controller: areaCtrl,
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  decoration: const InputDecoration(labelText: 'Auditor'),
-                  controller: auditorCtrl,
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          provider.loadHistory(filter: const AuditFilter());
-                          Navigator.pop(ctx);
-                        },
-                        child: const Text('Limpar'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: () {
-                          provider.loadHistory(
-                            filter: AuditFilter(
-                              mes: mes,
-                              ano: ano,
-                              area: areaCtrl.text.trim().isEmpty ? null : areaCtrl.text.trim(),
-                              auditor: auditorCtrl.text.trim().isEmpty ? null : auditorCtrl.text.trim(),
-                            ),
-                          );
-                          Navigator.pop(ctx);
-                        },
-                        child: const Text('Aplicar'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuditProvider>().loadAllAudits();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AuditProvider>();
-    final audits = provider.history;
+    final groups = _buildPendingGroups(provider.allAudits);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Indicadores'),
-        actions: [
-          IconButton(icon: const Icon(Icons.filter_alt_outlined), onPressed: _openFilters),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Setores pendentes')),
       body: provider.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : audits.isEmpty
-              ? Center(
-                  child: Text('Nenhuma auditoria encontrada para os filtros atuais',
-                      style: TextStyle(color: Colors.grey.shade600)),
-                )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-                  children: [
-                    _SectionCard(
-                      title: 'Auditorias por área',
-                      child: _AuditsPerArea(audits: audits),
-                    ),
-                    const SizedBox(height: 12),
-                    _SectionCard(
-                      title: 'Evolução mensal das notas',
-                      child: _MonthlyEvolution(audits: audits),
-                    ),
-                    const SizedBox(height: 12),
-                    _SectionCard(
-                      title: 'Histórico completo (${audits.length})',
-                      child: Column(
-                        children: audits.map((a) => AuditTile(audit: a)).toList(),
-                      ),
-                    ),
-                  ],
-                ),
+          : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+              itemCount: groups.length,
+              itemBuilder: (ctx, i) => _MonthPendingCard(group: groups[i]),
+            ),
     );
+  }
+
+  /// Monta um grupo por mês/ano — todos os que já têm auditoria salva,
+  /// mais o mês atual (mesmo que ainda não tenha nenhuma), para o
+  /// usuário sempre ver o que falta no mês corrente. Mais recente primeiro.
+  List<_MonthGroup> _buildPendingGroups(List<Audit> audits) {
+    const meses = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+    ];
+    final now = DateTime.now();
+    final auditedByKey = <String, Set<String>>{};
+
+    for (final a in audits) {
+      final key = '${a.mesReferencia}|${a.data.year}';
+      auditedByKey.putIfAbsent(key, () => {});
+      auditedByKey[key]!.add(a.area.trim().toLowerCase());
+    }
+
+    final currentKey = '${meses[now.month - 1]}|${now.year}';
+    auditedByKey.putIfAbsent(currentKey, () => {});
+
+    final keys = auditedByKey.keys.toList()
+      ..sort((a, b) {
+        final pa = a.split('|');
+        final pb = b.split('|');
+        final anoA = int.parse(pa[1]);
+        final anoB = int.parse(pb[1]);
+        if (anoA != anoB) return anoB.compareTo(anoA);
+        return meses.indexOf(pb[0]).compareTo(meses.indexOf(pa[0]));
+      });
+
+    return keys.map((key) {
+      final parts = key.split('|');
+      final mes = parts[0];
+      final ano = int.parse(parts[1]);
+      final auditadas = auditedByKey[key]!;
+      final pendentes = setoresAuditaveis
+          .where((s) => !auditadas.contains(s.trim().toLowerCase()))
+          .toList();
+      return _MonthGroup(mes: mes, ano: ano, pendentes: pendentes);
+    }).toList();
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  final String title;
-  final Widget child;
-  const _SectionCard({required this.title, required this.child});
+class _MonthGroup {
+  final String mes;
+  final int ano;
+  final List<String> pendentes;
+  _MonthGroup({required this.mes, required this.ano, required this.pendentes});
+}
+
+class _MonthPendingCard extends StatelessWidget {
+  final _MonthGroup group;
+  const _MonthPendingCard({required this.group});
 
   @override
   Widget build(BuildContext context) {
+    final tudoAuditado = group.pendentes.isEmpty;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-            const SizedBox(height: 10),
-            child,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${group.mes}/${group.ano}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: tudoAuditado ? Colors.green.shade50 : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: tudoAuditado ? Colors.green.shade300 : Colors.orange.shade300,
+                    ),
+                  ),
+                  child: Text(
+                    tudoAuditado ? 'Completo' : '${group.pendentes.length} pendente(s)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: tudoAuditado ? Colors.green.shade800 : Colors.orange.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (!tudoAuditado) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: group.pendentes.map((setor) {
+                  return ActionChip(
+                    avatar: const Icon(Icons.add_circle_outline, size: 16),
+                    label: Text(setor, style: const TextStyle(fontSize: 12.5)),
+                    onPressed: () {
+                      context.read<AuditProvider>().startNewAuditFor(
+                            area: setor,
+                            mesReferencia: group.mes,
+                          );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AuditFormScreen()),
+                      );
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Contagem de auditorias por área, com barra proporcional ao maior valor.
-class _AuditsPerArea extends StatelessWidget {
-  final List<Audit> audits;
-  const _AuditsPerArea({required this.audits});
-
-  @override
-  Widget build(BuildContext context) {
-    final counts = <String, int>{};
-    for (final a in audits) {
-      final area = a.area.trim().isEmpty ? '(Área não informada)' : a.area.trim();
-      counts[area] = (counts[area] ?? 0) + 1;
-    }
-    final entries = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final maxCount = entries.isEmpty ? 1 : entries.first.value;
-
-    return Column(
-      children: entries.map((e) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 110,
-                child: Text(e.key, style: const TextStyle(fontSize: 12.5), overflow: TextOverflow.ellipsis),
-              ),
-              Expanded(
-                child: LinearPercentIndicator(
-                  lineHeight: 14,
-                  percent: e.value / maxCount,
-                  backgroundColor: Colors.grey.shade200,
-                  progressColor: Theme.of(context).colorScheme.primary,
-                  barRadius: const Radius.circular(6),
-                  padding: EdgeInsets.zero,
-                  trailing: Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Text('${e.value}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-/// Média da nota geral por mês/ano, em ordem cronológica.
-class _MonthlyEvolution extends StatelessWidget {
-  final List<Audit> audits;
-  const _MonthlyEvolution({required this.audits});
-
-  @override
-  Widget build(BuildContext context) {
-    final sums = <String, double>{};
-    final counts = <String, int>{};
-    final order = <String>[];
-
-    final sorted = [...audits]..sort((a, b) => a.data.compareTo(b.data));
-    for (final a in sorted) {
-      final nota = a.notaGeral;
-      if (nota == null) continue;
-      final key = '${a.mesReferencia}/${a.data.year}';
-      if (!order.contains(key)) order.add(key);
-      sums[key] = (sums[key] ?? 0) + nota;
-      counts[key] = (counts[key] ?? 0) + 1;
-    }
-
-    if (order.isEmpty) {
-      return Text('Sem notas suficientes para calcular a evolução.',
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5));
-    }
-
-    return Column(
-      children: order.map((key) {
-        final media = sums[key]! / counts[key]!;
-        final color = AppTheme.colorForScore(media);
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            children: [
-              SizedBox(width: 90, child: Text(key, style: const TextStyle(fontSize: 12.5))),
-              Expanded(
-                child: LinearPercentIndicator(
-                  lineHeight: 14,
-                  percent: (media / 5).clamp(0, 1),
-                  backgroundColor: Colors.grey.shade200,
-                  progressColor: color,
-                  barRadius: const Radius.circular(6),
-                  padding: EdgeInsets.zero,
-                  trailing: Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Text(media.toStringAsFixed(2),
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: color)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
     );
   }
 }

@@ -22,6 +22,11 @@ class AuditProvider extends ChangeNotifier {
   List<Audit> _history = [];
   List<Audit> get history => _history;
 
+  /// Todas as auditorias, sem filtro nenhum — usado pela tela de
+  /// Indicadores (independente do que estiver filtrado no histórico).
+  List<Audit> _allAudits = [];
+  List<Audit> get allAudits => _allAudits;
+
   AuditFilter _filter = const AuditFilter();
   AuditFilter get filter => _filter;
 
@@ -39,6 +44,14 @@ class AuditProvider extends ChangeNotifier {
     );
     _previous = null;
     notifyListeners();
+  }
+
+  /// Igual a [startNewAudit], mas já parte com a área (e opcionalmente o
+  /// mês de referência) pré-preenchidos — usado ao tocar num setor
+  /// pendente na tela de Indicadores.
+  void startNewAuditFor({required String area, String? mesReferencia}) {
+    startNewAudit();
+    updateHeader(area: area, mesReferencia: mesReferencia);
   }
 
   void editAudit(Audit audit) {
@@ -163,5 +176,13 @@ class AuditProvider extends ChangeNotifier {
   Future<void> deleteAudit(String id) async {
     await repository.deleteAudit(id);
     await loadHistory();
+  }
+
+  Future<void> loadAllAudits() async {
+    isLoading = true;
+    notifyListeners();
+    _allAudits = await repository.getAudits();
+    isLoading = false;
+    notifyListeners();
   }
 }

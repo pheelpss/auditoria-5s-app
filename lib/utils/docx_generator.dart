@@ -111,9 +111,11 @@ class DocxGenerator {
     final bytes = builder.build();
 
     final dir = await getApplicationDocumentsDirectory();
-    final safeArea = audit.area.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_');
-    final fileName =
-        'Auditoria5S_${safeArea}_${DateFormat('yyyyMMdd_HHmm').format(audit.data)}.docx';
+    final safeArea = audit.area.trim().replaceAll(RegExp(r'[^A-Za-z0-9À-ÿ_-]+'), '_');
+    final mesAbrev = audit.mesReferencia.length >= 3
+        ? audit.mesReferencia.substring(0, 3).toUpperCase()
+        : audit.mesReferencia.toUpperCase();
+    final fileName = 'Auditoria5S_${safeArea}_$mesAbrev.docx';
     final file = File('${dir.path}/$fileName');
     await file.writeAsBytes(bytes, flush: true);
     return file;
