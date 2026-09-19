@@ -184,9 +184,10 @@ class AuditProvider extends ChangeNotifier {
   }
 
   // ====================================================================
-  // SISTEMA DE EXPORTAÇÃO E IMPORTAÇÃO VIA ARQUIVO .ZIP COMPATÍVEL COM WHATSAPP
+  // SISTEMA DE EXPORTAÇÃO E IMPORTAÇÃO PADRÃO (.5s)
   // ====================================================================
 
+  /// Exporta as auditorias gerando um arquivo com extensão unificada .5s
   Future<void> exportData(BuildContext context) async {
     try {
       isLoading = true;
@@ -227,8 +228,8 @@ class AuditProvider extends ChangeNotifier {
       final tempDir = await getTemporaryDirectory();
       final dateStr = DateTime.now().toIso8601String().substring(0, 10);
       
-      // Mudado para .zip para o WhatsApp permitir baixar facilmente no celular!
-      final exportFile = File('${tempDir.path}/Backup_Auditorias_5S_$dateStr.zip');
+      // Arquivo salvo estritamente com a extensão .5s
+      final exportFile = File('${tempDir.path}/Backup_Auditoria_5S_$dateStr.5s');
       
       final zipBytes = ZipEncoder().encode(archive);
       await exportFile.writeAsBytes(zipBytes!);
@@ -236,7 +237,7 @@ class AuditProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
 
-      await Share.shareXFiles([XFile(exportFile.path)], text: 'Segue o backup das auditorias 5S em formato ZIP.');
+      await Share.shareXFiles([XFile(exportFile.path)], text: 'Segue o arquivo de backup das auditorias 5S.');
     } catch (e) {
       isLoading = false;
       notifyListeners();
@@ -247,12 +248,13 @@ class AuditProvider extends ChangeNotifier {
     }
   }
 
+  /// Importa o arquivo .5s selecionado pelo usuário
   Future<void> importData(BuildContext context) async {
     try {
-      // Permite selecionar qualquer arquivo zipado do celular
+      // Aceita estritamente arquivos com extensão .5s (ou qualquer arquivo se o usuário preferir)
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['zip'],
+        allowedExtensions: ['5s'],
       );
 
       if (result == null || result.files.single.path == null) return;
@@ -315,7 +317,7 @@ class AuditProvider extends ChangeNotifier {
         await repository.saveAudit(audit);
       }
 
-      isLoading     = false;
+      isLoading = false;
       notifyListeners();
       await loadHistory();
 
@@ -328,7 +330,7 @@ class AuditProvider extends ChangeNotifier {
       notifyListeners();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Erro ao importar. Certifique-se de selecionar o arquivo .zip correto.')));
+            const SnackBar(content: Text('Erro ao importar. Certifique-se de selecionar um arquivo .5s válido.')));
       }
     }
   }
