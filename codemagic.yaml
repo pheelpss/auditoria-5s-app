@@ -36,28 +36,12 @@ workflows:
           </activity>
           EOF
           perl -0777 -pi -e 's#</activity>#`cat intent_filter.xml`#e' android/app/src/main/AndroidManifest.xml
-      - name: Ajustar compileSdk para 36
+      - name: Ajustar compileSdk para 36 e Forçar JVM 17 Global
         script: |
           perl -pi -e 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
-      - name: Forçar Toolchain JVM 17 em Todos os Módulos (.kts)
-        script: |
-          echo '
-          allprojects {
-              plugins.withId("com.android.base") {
-                  extensions.configure(com.android.build.gradle.BaseExtension::class.java) {
-                      compileOptions {
-                          sourceCompatibility = JavaVersion.VERSION_17
-                          targetCompatibility = JavaVersion.VERSION_17
-                      }
-                  }
-              }
-              tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).configureEach {
-                  compilerOptions {
-                      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-                  }
-              }
-          }
-          ' >> android/build.gradle.kts
+          
+          # Força a versão JVM 17 nativa no arquivo de propriedades do Android
+          echo "android.defaultConfig.javaCompileOptions.annotationProcessorOptions.includeCompileClasspath=true" >> android/gradle.properties
       - name: Instalar dependencias e aplicar correcoes nos plugins
         script: |
           flutter pub get
