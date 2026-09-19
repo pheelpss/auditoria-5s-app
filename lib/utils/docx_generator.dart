@@ -85,50 +85,33 @@ class DocxGenerator {
 
     // --- SEÇÃO FINAL DE EVIDÊNCIAS ---
     
-    // 1. Agrupar todos os arquivos anexos
-    final todosArquivos = <String>[];
-    for (final cat in fiveSCategories) {
-      final files = audit.evidencesFor(cat.code).where((e) => e.type == EvidenceType.file);
-      todosArquivos.addAll(files.map((f) => f.fileName));
-    }
-    
-    // DICA: Se você já implementou o campo globalEvidences na entidade Audit, 
-    // pode descomentar a linha abaixo para incluir arquivos globais também:
-    // todosArquivos.addAll(audit.globalEvidences?.where((e) => e.type == EvidenceType.file).map((e) => e.fileName) ?? []);
+    // 1. Agrupar todos os arquivos anexos (pega todos, independente da categoria)
+    final todosArquivos = audit.evidences
+        .where((e) => e.type == EvidenceType.file)
+        .map((e) => e.fileName)
+        .toList();
 
     if (todosArquivos.isNotEmpty) {
       builder.addSmallLabel('Arquivos Anexados');
       builder.addSmallText(todosArquivos.join(', '));
     }
 
-    // 2. Agrupar todas as evidências fotográficas em grade
+    // 2. Agrupar todas as evidências fotográficas em grade (pega todas, independente da categoria)
     final todasFotos = <Uint8List>[];
-    for (final cat in fiveSCategories) {
-      final photos = audit.evidencesFor(cat.code).where((e) => e.type == EvidenceType.photo);
-      for (final ev in photos) {
-        final file = File(ev.filePath);
-        if (await file.exists()) {
-          todasFotos.add(await file.readAsBytes());
-        }
-      }
-    }
+    final globalPhotos = audit.evidences.where((e) => e.type == EvidenceType.photo);
     
-    // DICA: Se você já implementou o campo globalEvidences na entidade Audit,
-    // pode descomentar o bloco abaixo para incluir fotos globais também:
-    /*
-    final globalPhotos = audit.globalEvidences?.where((e) => e.type == EvidenceType.photo) ?? [];
     for (final ev in globalPhotos) {
       final file = File(ev.filePath);
       if (await file.exists()) {
         todasFotos.add(await file.readAsBytes());
       }
     }
-    */
 
     if (todasFotos.isNotEmpty) {
       builder.addPageBreak();
       builder.addTitle('EVIDÊNCIAS FOTOGRÁFICAS');
       builder.addSpacerSmall();
+      // Envia a lista para montar a grade dinâmica que cabe em 1 página
       builder.addPhotoGrid(todasFotos);
     }
 
@@ -403,15 +386,18 @@ class _DocxBuilder {
     _body.write('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');
   }
 
-  /// Caixa com borda contendo o nome do setor/senso no topo e as fotos
-  /// daquele setor logo abaixo — pensada para poder ser copiada e colada
-  /// Grade compacta com todas as fotos de evidência juntas (sem separar
-  /// por setor), 3 por linha, reduzidas para caber na página.
+  /// Caixa com borda contendo todas as fotos, dimensionada dinamicamente
+  /// Se houver muitas fotos, ajusta para 4 colunas em vez de 3 para garantir
+  /// que tudo caiba na página.
   void addPhotoGrid(List<Uint8List> rawImages) {
     if (rawImages.isEmpty) return;
-    const cols = 3;
-    const colWidth = 3066; // 9200 / 3
-    const imgMaxWidthEmu = 1750000; // ~4.6cm — 3 cabem confortavelmente na largura útil
+    
+    // Lógica Dinâmica: Se tiver mais de 6 fotos, comprime usando 4 colunas
+    // Caso contrário, usa 3 colunas (padrão mais espaçoso).
+    final cols = rawImages.length > 6 ? 4 : 3;
+    final colWidth = (9200 / cols).floor(); 
+    // Largura total em EMU é em torno de 5.250.000 (equivale a margens de página normais)
+    final imgMaxWidthEmu = (5250000 / cols).floor(); 
 
     final buffer = StringBuffer();
     buffer.write('<w:tbl>');
