@@ -4,13 +4,12 @@ import 'package:provider/provider.dart';
 import '../../core/constants/five_s_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/audit_provider.dart';
-import 'evidence_picker.dart';
 import 'score_dropdown.dart';
 import 'score_indicator.dart';
 
 /// Um bloco expansível para uma categoria (1S..5S): lista de perguntas com
-/// seletor de nota (e a nota do mês anterior ao lado, para comparação),
-/// resultado calculado automaticamente e evidências.
+/// seletor de nota (e a nota do mês anterior ao lado, para comparação) e
+/// resultado calculado automaticamente. (Evidências agora são globais no final).
 class CategorySection extends StatelessWidget {
   final FiveSCategoryDef category;
   const CategorySection({super.key, required this.category});
@@ -23,12 +22,14 @@ class CategorySection extends StatelessWidget {
     final mediaAnterior = provider.previousAverageForCategory(category.code);
 
     return Card(
+      margin: const EdgeInsets.only(bottom: 6), // Margem reduzida para compactar
       child: ExpansionTile(
+        visualDensity: VisualDensity.compact, // Achata o cabeçalho do painel
         initiallyExpanded: category.code == '1S',
         title: Text(category.displayTitle,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)), // Fonte levemente menor
         subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6, right: 8),
+          padding: const EdgeInsets.only(top: 4, right: 4),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -36,29 +37,29 @@ class CategorySection extends StatelessWidget {
                 child: ScoreIndicator(label: 'Resultado do ${category.code}', score: media),
               ),
               if (mediaAnterior != null) ...[
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 _PreviousBadge(label: 'Mês ant.', value: mediaAnterior),
               ],
             ],
           ),
         ),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12), // Padding interno reduzido
         children: [
           for (final q in category.questions)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.symmetric(vertical: 4), // Distância menor entre perguntas
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: Text('${q.number}  ${q.text}', style: const TextStyle(fontSize: 13.5)),
+                    child: Text('${q.number}  ${q.text}', style: const TextStyle(fontSize: 13)), // Texto compacto
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Builder(builder: (_) {
                     final anterior = provider.previousScoreFor(category.code, q.number);
                     if (anterior == null) return const SizedBox.shrink();
                     return Padding(
-                      padding: const EdgeInsets.only(right: 6, top: 4),
+                      padding: const EdgeInsets.only(right: 6),
                       child: _PreviousChip(value: anterior),
                     );
                   }),
@@ -66,13 +67,16 @@ class CategorySection extends StatelessWidget {
                     value: audit.items
                         .firstWhere((i) => i.categoryCode == category.code && i.number == q.number)
                         .score,
-                    onChanged: (v) => provider.setScore(category.code, q.number, v),
+                    onChanged: (v) {
+                      // Atualiza a nota na tela
+                      provider.setScore(category.code, q.number, v);
+                      // SALVAMENTO AUTOMÁTICO NA HORA!
+                      provider.saveCurrent(); 
+                    },
                   ),
                 ],
               ),
             ),
-          const Divider(height: 24),
-          EvidencePicker(categoryCode: category.code),
         ],
       ),
     );
@@ -90,19 +94,19 @@ class _PreviousBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = AppTheme.colorForScore(value);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4), // Mais fino
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+          Text(label, style: TextStyle(fontSize: 9, color: Colors.grey.shade600)),
           Text(
             value.toStringAsFixed(2),
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color),
           ),
         ],
       ),
@@ -122,8 +126,8 @@ class _PreviousChip extends StatelessWidget {
     return Tooltip(
       message: 'Nota do mês anterior',
       child: Container(
-        width: 30,
-        height: 30,
+        width: 26, // Círculo menor
+        height: 26,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
@@ -132,7 +136,7 @@ class _PreviousChip extends StatelessWidget {
         ),
         child: Text(
           '$value',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
         ),
       ),
     );
