@@ -1,7 +1,7 @@
 enum EvidenceType { photo, file }
 
 /// Representa um anexo de evidência (foto ou arquivo) vinculado a uma
-/// categoria (1S..5S) de uma auditoria.
+/// categoria (1S..5S) de uma auditoria, ou ao formulário de modo GLOBAL.
 class Evidence {
   final String id;
   final String categoryCode;
@@ -11,7 +11,7 @@ class Evidence {
 
   Evidence({
     required this.id,
-    required this.categoryCode,
+    this.categoryCode = 'GLOBAL', // Agora tem um valor padrão
     required this.filePath,
     required this.fileName,
     required this.type,
@@ -28,7 +28,7 @@ class Evidence {
 
   factory Evidence.fromMap(Map<String, dynamic> map) => Evidence(
         id: map['id'] as String,
-        categoryCode: map['categoryCode'] as String,
+        categoryCode: map['categoryCode'] as String? ?? 'GLOBAL',
         filePath: map['filePath'] as String,
         fileName: map['fileName'] as String,
         type: EvidenceType.values.firstWhere((e) => e.name == map['type']),
