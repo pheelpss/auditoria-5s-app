@@ -8,7 +8,8 @@ import 'audit_form_screen.dart';
 
 /// Tela de Indicadores: mostra, mês a mês, quais setores da lista fixa
 /// ainda não foram auditados — tocar num setor pendente já abre uma
-/// nova auditoria com a área pré-preenchida.
+/// nova auditoria com a área pré-preenchida. Também lista os setores
+/// já auditados para conferência.
 class IndicatorsScreen extends StatefulWidget {
   const IndicatorsScreen({super.key});
 
@@ -31,20 +32,19 @@ class _IndicatorsScreenState extends State<IndicatorsScreen> {
     final groups = _buildPendingGroups(provider.allAudits);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Setores pendentes')),
+      appBar: AppBar(title: const Text('Status dos Setores')),
       body: provider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 24), // Espaçamento reduzido
               itemCount: groups.length,
               itemBuilder: (ctx, i) => _MonthPendingCard(group: groups[i]),
             ),
     );
   }
 
-  /// Monta um grupo por mês/ano — todos os que já têm auditoria salva,
-  /// mais o mês atual (mesmo que ainda não tenha nenhuma), para o
-  /// usuário sempre ver o que falta no mês corrente. Mais recente primeiro.
+  /// Monta um grupo por mês/ano separando o que está pendente do que
+  /// já foi auditado.
   List<_MonthGroup> _buildPendingGroups(List<Audit> audits) {
     const meses = [
       'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -76,11 +76,20 @@ class _IndicatorsScreenState extends State<IndicatorsScreen> {
       final parts = key.split('|');
       final mes = parts[0];
       final ano = int.parse(parts[1]);
-      final auditadas = auditedByKey[key]!;
-      final pendentes = setoresAuditaveis
-          .where((s) => !auditadas.contains(s.trim().toLowerCase()))
-          .toList();
-      return _MonthGroup(mes: mes, ano: ano, pendentes: pendentes);
+      final auditadasLowercase = auditedByKey[key]!;
+      
+      final pendentes = <String>[];
+      final auditados = <String>[];
+
+      for (final setor in setoresAuditaveis) {
+        if (auditadasLowercase.contains(setor.trim().toLowerCase())) {
+          auditados.add(setor);
+        } else {
+          pendentes.add(setor);
+        }
+      }
+      
+      return _MonthGroup(mes: mes, ano: ano, pendentes: pendentes, auditados: auditados);
     }).toList();
   }
 }
@@ -89,7 +98,14 @@ class _MonthGroup {
   final String mes;
   final int ano;
   final List<String> pendentes;
-  _MonthGroup({required this.mes, required this.ano, required this.pendentes});
+  final List<String> auditados;
+  
+  _MonthGroup({
+    required this.mes, 
+    required this.ano, 
+    required this.pendentes,
+    required this.auditados,
+  });
 }
 
 class _MonthPendingCard extends StatelessWidget {
@@ -99,9 +115,11 @@ class _MonthPendingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tudoAuditado = group.pendentes.isEmpty;
+    
     return Card(
+      margin: const EdgeInsets.only(bottom: 6), // Redução de espaço vertical
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -111,7 +129,7 @@ class _MonthPendingCard extends StatelessWidget {
                 Text('${group.mes}/${group.ano}',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                   decoration: BoxDecoration(
                     color: tudoAuditado ? Colors.green.shade50 : Colors.orange.shade50,
                     borderRadius: BorderRadius.circular(20),
@@ -130,15 +148,21 @@ class _MonthPendingCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (!tudoAuditado) ...[
-              const SizedBox(height: 10),
+            
+            // --- SEÇÃO: SETORES PENDENTES ---
+            if (group.pendentes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Setores Pendentes', 
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orange.shade800)),
+              const SizedBox(height: 6),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 6, // Reduzido de 8 para 6
+                runSpacing: 6,
                 children: group.pendentes.map((setor) {
                   return ActionChip(
+                    visualDensity: VisualDensity.compact,
                     avatar: const Icon(Icons.add_circle_outline, size: 16),
-                    label: Text(setor, style: const TextStyle(fontSize: 12.5)),
+                    label: Text(setor, style: const TextStyle(fontSize: 12)),
                     onPressed: () {
                       context.read<AuditProvider>().startNewAuditFor(
                             area: setor,
@@ -149,6 +173,29 @@ class _MonthPendingCard extends StatelessWidget {
                         MaterialPageRoute(builder: (_) => const AuditFormScreen()),
                       );
                     },
+                  );
+                }).toList(),
+              ),
+            ],
+
+            // --- SEÇÃO: SETORES AUDITADOS ---
+            if (group.auditados.isNotEmpty) ...[
+              if (group.pendentes.isNotEmpty) const Divider(height: 20),
+              if (group.pendentes.isEmpty) const SizedBox(height: 12),
+              
+              Text('Setores Auditados', 
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green.shade800)),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: group.auditados.map((setor) {
+                  return Chip(
+                    visualDensity: VisualDensity.compact,
+                    avatar: const Icon(Icons.check_circle, color: Colors.green, size: 16), // Ícone de ✓
+                    label: Text(setor, style: const TextStyle(fontSize: 12)),
+                    backgroundColor: Colors.green.shade50,
+                    side: BorderSide(color: Colors.green.shade200),
                   );
                 }).toList(),
               ),
