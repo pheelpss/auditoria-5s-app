@@ -51,17 +51,17 @@ class DocxGenerator {
                 .score;
         rows.add([
           '${item.number} ${item.question}',
-          if (previousAudit != null) notaAnterior?.toString() ?? '-',
-          item.score?.toString() ?? '-',
+          if (previousAudit != null) notaAnterior?.toString() ?? '',
+          item.score?.toString() ?? '',
         ]);
       }
       builder.addCategoryTable(
         title: '${cat.code} - ${cat.title.toUpperCase()} (${cat.senseName})',
         rows: rows,
         resultLabel: 'RESULTADO ${cat.code}',
-        resultValue: media != null ? media.toStringAsFixed(2) : '-',
+        resultValue: media != null ? media.toStringAsFixed(2) : '',
         resultValueAnterior: previousAudit != null
-            ? (mediaAnterior != null ? mediaAnterior.toStringAsFixed(2) : '-')
+            ? (mediaAnterior != null ? mediaAnterior.toStringAsFixed(2) : '')
             : null,
         colunaAnteriorLabel: colunaAnterior,
         colunaAtualLabel: colunaAtual,
@@ -76,10 +76,10 @@ class DocxGenerator {
     final nota = audit.notaGeral;
     final notaAnteriorGeral = previousAudit?.notaGeral;
     builder.addSummaryLine(
-      media: nota != null ? nota.toStringAsFixed(2) : '-',
-      classificacao: audit.classificacao,
+      media: nota != null ? nota.toStringAsFixed(2) : '',
+      classificacao: nota != null ? audit.classificacao : '',
       mediaAnterior: previousAudit != null
-          ? (notaAnteriorGeral != null ? notaAnteriorGeral.toStringAsFixed(2) : '-')
+          ? (notaAnteriorGeral != null ? notaAnteriorGeral.toStringAsFixed(2) : '')
           : null,
     );
 
@@ -89,31 +89,23 @@ class DocxGenerator {
     }
 
     // Evidências fotográficas: seção separada ao final do relatório,
-    // com uma caixa por setor (fácil de copiar/colar para outra
-    // apresentação), em vez de intercaladas entre as tabelas.
-    final temFotos = fiveSCategories
-        .any((cat) => audit.evidencesFor(cat.code).any((e) => e.type == EvidenceType.photo));
-    if (temFotos) {
+    // todas as fotos juntas em grade (sem separar por setor), reduzidas
+    // para caberem na segunda página.
+    final todasFotos = <Uint8List>[];
+    for (final cat in fiveSCategories) {
+      final photos = audit.evidencesFor(cat.code).where((e) => e.type == EvidenceType.photo);
+      for (final ev in photos) {
+        final file = File(ev.filePath);
+        if (await file.exists()) {
+          todasFotos.add(await file.readAsBytes());
+        }
+      }
+    }
+    if (todasFotos.isNotEmpty) {
       builder.addPageBreak();
       builder.addTitle('EVIDÊNCIAS FOTOGRÁFICAS');
       builder.addSpacerSmall();
-      for (final cat in fiveSCategories) {
-        final photos =
-            audit.evidencesFor(cat.code).where((e) => e.type == EvidenceType.photo).toList();
-        if (photos.isEmpty) continue;
-
-        final imagesBytes = <Uint8List>[];
-        for (final ev in photos) {
-          final file = File(ev.filePath);
-          if (await file.exists()) {
-            imagesBytes.add(await file.readAsBytes());
-          }
-        }
-        await builder.addEvidenceBox(
-          title: '${cat.code} - ${cat.title.toUpperCase()} (${cat.senseName})',
-          rawImages: imagesBytes,
-        );
-      }
+      builder.addPhotoGrid(todasFotos);
     }
 
     final bytes = builder.build();
@@ -206,7 +198,7 @@ class _DocxBuilder {
     buffer.write('<w:tc><w:tcPr><w:tcW w:w="2200" w:type="dxa"/>'
         '<w:tcMar><w:top w:w="15" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/>'
         '<w:left w:w="60" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tcMar></w:tcPr>');
-    buffer.write(_paragraphXml(f.value.isEmpty ? '-' : f.value, sizePt: 9, spacingAfter: 0));
+    buffer.write(_paragraphXml(f.value, sizePt: 9, spacingAfter: 0));
     buffer.write('</w:tc>');
     return buffer.toString();
   }
@@ -303,7 +295,7 @@ class _DocxBuilder {
     if (temAnterior) {
       buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
           '<w:shd w:val="clear" w:fill="$_resultFill"/><w:vAlign w:val="center"/></w:tcPr>');
-      buffer.write(_paragraphXml(resultValueAnterior ?? '-', bold: true, sizePt: 9, align: 'center', spacingAfter: 0));
+      buffer.write(_paragraphXml(resultValueAnterior ?? '', bold: true, sizePt: 9, align: 'center', spacingAfter: 0));
       buffer.write('</w:tc>');
     }
     buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
@@ -384,76 +376,58 @@ class _DocxBuilder {
 
   /// Caixa com borda contendo o nome do setor/senso no topo e as fotos
   /// daquele setor logo abaixo — pensada para poder ser copiada e colada
-  /// inteira (texto + imagens) em outra apresentação.
-  Future<void> addEvidenceBox({required String title, required List<Uint8List> rawImages}) async {
-    _body.write('''
-      <w:p><w:pPr>
-        <w:pBdr>
-          <w:top w:val="single" w:sz="8" w:color="$_borderColor"/>
-          <w:left w:val="single" w:sz="8" w:color="$_borderColor"/>
-          <w:right w:val="single" w:sz="8" w:color="$_borderColor"/>
-        </w:pBdr>
-        <w:shd w:val="clear" w:fill="$_headerFill"/>
-        <w:spacing w:after="0" w:before="120"/>
-      </w:pPr>
-      <w:r><w:rPr><w:b/><w:rFonts w:ascii="$_fontFamily" w:hAnsi="$_fontFamily"/><w:sz w:val="22"/></w:rPr>
-        <w:t xml:space="preserve">${_escapeXml(title)}</w:t>
-      </w:r></w:p>
-    ''');
+  /// Grade compacta com todas as fotos de evidência juntas (sem separar
+  /// por setor), 3 por linha, reduzidas para caber na página.
+  void addPhotoGrid(List<Uint8List> rawImages) {
+    if (rawImages.isEmpty) return;
+    const cols = 3;
+    const colWidth = 3066; // 9200 / 3
+    const imgMaxWidthEmu = 1750000; // ~4.6cm — 3 cabem confortavelmente na largura útil
 
-    if (rawImages.isEmpty) {
-      _body.write('''
-        <w:p><w:pPr><w:pBdr>
-          <w:left w:val="single" w:sz="8" w:color="$_borderColor"/>
-          <w:right w:val="single" w:sz="8" w:color="$_borderColor"/>
-          <w:bottom w:val="single" w:sz="8" w:color="$_borderColor"/>
-        </w:pBdr><w:spacing w:after="80" w:before="80"/></w:pPr>
-        <w:r><w:rPr><w:rFonts w:ascii="$_fontFamily" w:hAnsi="$_fontFamily"/><w:sz w:val="18"/><w:i/></w:rPr>
-          <w:t xml:space="preserve">Sem fotos anexadas.</w:t>
-        </w:r></w:p>
-      ''');
-      return;
+    final buffer = StringBuffer();
+    buffer.write('<w:tbl>');
+    buffer.write(_tblPrXml(borderColor: 'D9D9D9', borderSz: 4));
+    buffer.write('<w:tblGrid>');
+    for (var c = 0; c < cols; c++) {
+      buffer.write('<w:gridCol w:w="$colWidth"/>');
+    }
+    buffer.write('</w:tblGrid>');
+
+    for (var i = 0; i < rawImages.length; i += cols) {
+      buffer.write('<w:tr>');
+      for (var c = 0; c < cols; c++) {
+        final idx = i + c;
+        buffer.write('<w:tc><w:tcPr><w:tcW w:w="$colWidth" w:type="dxa"/>'
+            '<w:tcMar><w:top w:w="40" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/>'
+            '<w:left w:w="40" w:type="dxa"/><w:right w:w="40" w:type="dxa"/></w:tcMar></w:tcPr>');
+        if (idx < rawImages.length) {
+          buffer.write(_imageParagraphXml(rawImages[idx], maxWidthEmu: imgMaxWidthEmu));
+        } else {
+          buffer.write(_paragraphXml('', sizePt: 1, spacingAfter: 0));
+        }
+        buffer.write('</w:tc>');
+      }
+      buffer.write('</w:tr>');
     }
 
-    for (var i = 0; i < rawImages.length; i++) {
-      final isLast = i == rawImages.length - 1;
-      await _addImageInsideBox(rawImages[i], closeBorderBottom: isLast);
-    }
+    buffer.write('</w:tbl>');
+    _body.write(buffer.toString());
   }
 
-  /// Igual a [addImage], mas dentro de um parágrafo com borda esquerda e
-  /// direita (e inferior na última foto), para fechar visualmente a
-  /// caixa iniciada em [addEvidenceBox].
-  Future<void> _addImageInsideBox(Uint8List rawBytes, {required bool closeBorderBottom}) async {
-    final prepared = _prepareImage(rawBytes);
-    if (prepared == null) {
-      if (closeBorderBottom) {
-        _body.write('''
-          <w:p><w:pPr><w:pBdr>
-            <w:left w:val="single" w:sz="8" w:color="$_borderColor"/>
-            <w:right w:val="single" w:sz="8" w:color="$_borderColor"/>
-            <w:bottom w:val="single" w:sz="8" w:color="$_borderColor"/>
-          </w:pBdr></w:pPr></w:p>
-        ''');
-      }
-      return;
-    }
+  /// Gera o XML de um parágrafo contendo uma foto redimensionada,
+  /// respeitando a proporção real (aplicando orientação EXIF). Retorna
+  /// um parágrafo vazio se a imagem não puder ser decodificada.
+  String _imageParagraphXml(Uint8List rawBytes, {required int maxWidthEmu}) {
+    final prepared = _prepareImage(rawBytes, maxWidthEmu: maxWidthEmu);
+    if (prepared == null) return _paragraphXml('', sizePt: 1, spacingAfter: 0);
     final (jpgBytes, widthEmu, heightEmu) = prepared;
 
     _imgCounter++;
     final rId = 'rIdImg$_imgCounter';
     _images.add(_ImagePart(rId: rId, fileName: 'image$_imgCounter.jpg', bytes: jpgBytes));
 
-    final bottomBorder =
-        closeBorderBottom ? '<w:bottom w:val="single" w:sz="8" w:color="$_borderColor"/>' : '';
-    _body.write('''
-      <w:p><w:pPr><w:pBdr>
-          <w:left w:val="single" w:sz="8" w:color="$_borderColor"/>
-          <w:right w:val="single" w:sz="8" w:color="$_borderColor"/>
-          $bottomBorder
-        </w:pBdr>
-        <w:spacing w:after="60" w:before="60"/>
-      </w:pPr>
+    return '''
+      <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0" w:before="0"/></w:pPr>
       <w:r><w:drawing>
         <wp:inline distT="0" distB="0" distL="0" distR="0">
           <wp:extent cx="$widthEmu" cy="$heightEmu"/>
@@ -478,13 +452,13 @@ class _DocxBuilder {
           </a:graphic>
         </wp:inline>
       </w:drawing></w:r></w:p>
-    ''');
+    ''';
   }
 
   /// Decodifica (aplicando orientação EXIF), redimensiona e calcula as
   /// dimensões EMU respeitando a proporção real da imagem. Retorna null
   /// se a imagem não puder ser decodificada.
-  (Uint8List, int, int)? _prepareImage(Uint8List rawBytes) {
+  (Uint8List, int, int)? _prepareImage(Uint8List rawBytes, {int maxWidthEmu = 3200000}) {
     img.Image? decoded;
     try {
       decoded = img.decodeImage(rawBytes);
@@ -494,15 +468,14 @@ class _DocxBuilder {
     if (decoded == null) return null;
 
     img.Image resized = decoded;
-    const maxSide = 1280;
+    const maxSide = 900;
     if (decoded.width > maxSide || decoded.height > maxSide) {
       resized = decoded.width >= decoded.height
           ? img.copyResize(decoded, width: maxSide)
           : img.copyResize(decoded, height: maxSide);
     }
-    final jpgBytes = Uint8List.fromList(img.encodeJpg(resized, quality: 78));
+    final jpgBytes = Uint8List.fromList(img.encodeJpg(resized, quality: 72));
 
-    const maxWidthEmu = 3200000; // ~8.4cm
     final aspect = resized.height / resized.width;
     final widthEmu = maxWidthEmu;
     final heightEmu = (maxWidthEmu * aspect).round();
