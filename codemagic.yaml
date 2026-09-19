@@ -39,13 +39,17 @@ workflows:
       - name: Ajustar compileSdk para 36
         script: |
           perl -pi -e 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
-      - name: Padronizar Java e Kotlin para JVM 17 (.kts)
+      - name: Forçar Toolchain JVM 17 em Todos os Módulos (.kts)
         script: |
           echo '
           allprojects {
-              tasks.withType(JavaCompile::class.java).configureEach {
-                  sourceCompatibility = JavaVersion.VERSION_17.toString()
-                  targetCompatibility = JavaVersion.VERSION_17.toString()
+              plugins.withId("com.android.base") {
+                  extensions.configure(com.android.build.gradle.BaseExtension::class.java) {
+                      compileOptions {
+                          sourceCompatibility = JavaVersion.VERSION_17
+                          targetCompatibility = JavaVersion.VERSION_17
+                      }
+                  }
               }
               tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).configureEach {
                   compilerOptions {
