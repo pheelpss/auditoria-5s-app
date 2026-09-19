@@ -66,11 +66,6 @@ class DocxGenerator {
         colunaAnteriorLabel: colunaAnterior,
         colunaAtualLabel: colunaAtual,
       );
-
-      final files = audit.evidencesFor(cat.code).where((e) => e.type == EvidenceType.file);
-      if (files.isNotEmpty) {
-        builder.addSmallText('Anexos — ${cat.code}: ${files.map((f) => f.fileName).join(', ')}');
-      }
     }
 
     final nota = audit.notaGeral;
@@ -88,9 +83,25 @@ class DocxGenerator {
       builder.addSmallText(audit.comentarios);
     }
 
-    // Evidências fotográficas: seção separada ao final do relatório,
-    // todas as fotos juntas em grade (sem separar por setor), reduzidas
-    // para caberem na segunda página.
+    // --- SEÇÃO FINAL DE EVIDÊNCIAS ---
+    
+    // 1. Agrupar todos os arquivos anexos
+    final todosArquivos = <String>[];
+    for (final cat in fiveSCategories) {
+      final files = audit.evidencesFor(cat.code).where((e) => e.type == EvidenceType.file);
+      todosArquivos.addAll(files.map((f) => f.fileName));
+    }
+    
+    // DICA: Se você já implementou o campo globalEvidences na entidade Audit, 
+    // pode descomentar a linha abaixo para incluir arquivos globais também:
+    // todosArquivos.addAll(audit.globalEvidences?.where((e) => e.type == EvidenceType.file).map((e) => e.fileName) ?? []);
+
+    if (todosArquivos.isNotEmpty) {
+      builder.addSmallLabel('Arquivos Anexados');
+      builder.addSmallText(todosArquivos.join(', '));
+    }
+
+    // 2. Agrupar todas as evidências fotográficas em grade
     final todasFotos = <Uint8List>[];
     for (final cat in fiveSCategories) {
       final photos = audit.evidencesFor(cat.code).where((e) => e.type == EvidenceType.photo);
@@ -101,6 +112,19 @@ class DocxGenerator {
         }
       }
     }
+    
+    // DICA: Se você já implementou o campo globalEvidences na entidade Audit,
+    // pode descomentar o bloco abaixo para incluir fotos globais também:
+    /*
+    final globalPhotos = audit.globalEvidences?.where((e) => e.type == EvidenceType.photo) ?? [];
+    for (final ev in globalPhotos) {
+      final file = File(ev.filePath);
+      if (await file.exists()) {
+        todasFotos.add(await file.readAsBytes());
+      }
+    }
+    */
+
     if (todasFotos.isNotEmpty) {
       builder.addPageBreak();
       builder.addTitle('EVIDÊNCIAS FOTOGRÁFICAS');
@@ -112,10 +136,18 @@ class DocxGenerator {
 
     final dir = await getApplicationDocumentsDirectory();
     final safeArea = audit.area.trim().replaceAll(RegExp(r'[^A-Za-z0-9À-ÿ_-]+'), '_');
-    final mesAbrev = audit.mesReferencia.length >= 3
-        ? audit.mesReferencia.substring(0, 3).toUpperCase()
-        : audit.mesReferencia.toUpperCase();
-    final fileName = 'Auditoria5S_${safeArea}_$mesAbrev.docx';
+    
+    // Formata o mês (Ex: Janeiro -> Jan)
+    final mesFormatado = audit.mesReferencia.length >= 3
+        ? '${audit.mesReferencia[0].toUpperCase()}${audit.mesReferencia.substring(1, 3).toLowerCase()}'
+        : audit.mesReferencia;
+        
+    // Pega os 2 últimos dígitos do ano da data da auditoria
+    final ano2Digitos = audit.data.year.toString().substring(2);
+    
+    // Gera o nome no formato: Auditoria_5S_Jan_Leves_26.docx
+    final fileName = 'Auditoria_5S_${mesFormatado}_${safeArea}_$ano2Digitos.docx';
+    
     final file = File('${dir.path}/$fileName');
     await file.writeAsBytes(bytes, flush: true);
     return file;
