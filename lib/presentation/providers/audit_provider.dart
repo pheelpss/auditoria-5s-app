@@ -248,21 +248,31 @@ class AuditProvider extends ChangeNotifier {
     }
   }
 
-  /// Importa o arquivo .5s selecionado pelo usuário
+  /// Importa o arquivo .5s selecionado manualmente pelo usuário (seletor
+  /// de arquivos).
   Future<void> importData(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['5s'],
+    );
+    if (result == null || result.files.single.path == null) return;
+    if (!context.mounted) return;
+    await _importFromPath(result.files.single.path!, context);
+  }
+
+  /// Importa um arquivo .5s a partir de um caminho já conhecido — usado
+  /// quando o usuário recebe o arquivo por fora do app (WhatsApp, e-mail,
+  /// gerenciador de arquivos) e toca nele para abrir com o Auditoria 5S.
+  Future<void> importDataFromPath(String path, BuildContext context) async {
+    await _importFromPath(path, context);
+  }
+
+  Future<void> _importFromPath(String path, BuildContext context) async {
     try {
-      // Aceita estritamente arquivos com extensão .5s (ou qualquer arquivo se o usuário preferir)
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['5s'],
-      );
-
-      if (result == null || result.files.single.path == null) return;
-
       isLoading = true;
       notifyListeners();
 
-      final file = File(result.files.single.path!);
+      final file = File(path);
       final bytes = await file.readAsBytes();
       final archive = ZipDecoder().decodeBytes(bytes);
 
@@ -285,7 +295,7 @@ class AuditProvider extends ChangeNotifier {
           final ext = ev.fileName.split('.').last;
           final mediaFile = archive.findFile('media/${ev.id}.$ext');
 
-          String newPath = ev.filePath; 
+          String newPath = ev.filePath;
 
           if (mediaFile != null) {
             final localFile = File('${appDir.path}/${ev.id}.$ext');
@@ -330,7 +340,7 @@ class AuditProvider extends ChangeNotifier {
       notifyListeners();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Erro ao importar. Certifique-se de selecionar um arquivo .5s válido.')));
+            const SnackBar(content: Text('Erro ao importar. Certifique-se de que o arquivo .5s é válido.')));
       }
     }
   }
