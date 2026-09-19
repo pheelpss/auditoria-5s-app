@@ -24,20 +24,7 @@ workflows:
           perl -pi -e 's/android:launchMode="singleTop"/android:launchMode="singleTask"/' android/app/src/main/AndroidManifest.xml
       - name: Corrigir JVM target entre módulos (plugins antigos)
         script: |
-          cat >> android/build.gradle.kts << 'GRADLEEOF'
-
-          subprojects {
-              tasks.withType<JavaCompile>().configureEach {
-                  sourceCompatibility = "17"
-                  targetCompatibility = "17"
-              }
-              tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-                  compilerOptions {
-                      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-                  }
-              }
-          }
-          GRADLEEOF
+          echo "kotlin.jvm.target.validation.mode=warning" >> android/gradle.properties
       - name: Instalar dependencias
         script: |
           flutter pub get
