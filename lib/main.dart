@@ -45,13 +45,20 @@ class _Auditoria5SAppState extends State<Auditoria5SApp> {
 
   void _handleSharedFiles(List<SharedMediaFile> files) {
     if (files.isEmpty) return;
-    final backup = files.where((f) => f.path.toLowerCase().endsWith('.5s'));
-    if (backup.isEmpty) return;
-    final path = backup.first.path;
+    final path = files.first.path;
+    _tryShowImportDialog(path, tentativas: 10);
+  }
 
+  void _tryShowImportDialog(String path, {required int tentativas}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final context = _navigatorKey.currentContext;
-      if (context != null) _confirmImport(context, path);
+      if (context != null) {
+        _confirmImport(context, path);
+      } else if (tentativas > 0) {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          _tryShowImportDialog(path, tentativas: tentativas - 1);
+        });
+      }
     });
   }
 
