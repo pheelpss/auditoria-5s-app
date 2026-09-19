@@ -1,8 +1,6 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import '../../core/constants/five_s_data.dart';
 import '../../core/theme/app_theme.dart';
@@ -21,40 +19,12 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  late StreamSubscription _intentDataStreamSubscription;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuditProvider>().loadHistory();
     });
-
-    // 1. Quando o app está totalmente fechado e o usuário clica no arquivo no WhatsApp
-    ReceiveSharingIntent.getInitialMedia().then((List<SharedMediaFile> value) {
-      if (value.isNotEmpty) {
-        final path = value.first.path;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          context.read<AuditProvider>().importFromFilePath(path, context);
-        });
-      }
-    });
-
-    // 2. Quando o app já está em segundo plano e o usuário clica no arquivo no WhatsApp
-    _intentDataStreamSubscription = ReceiveSharingIntent.getMediaStream().listen((List<SharedMediaFile> value) {
-      if (value.isNotEmpty) {
-        final path = value.first.path;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          context.read<AuditProvider>().importFromFilePath(path, context);
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _intentDataStreamSubscription.cancel();
-    super.dispose();
   }
 
   Future<void> _openFilters() async {
@@ -176,7 +146,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 value: 'import',
                 child: ListTile(
                   leading: Icon(Icons.download),
-                  title: Text('Importar Manualmente'),
+                  title: Text('Importar Backup (.5s)'),
                   contentPadding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                 ),
