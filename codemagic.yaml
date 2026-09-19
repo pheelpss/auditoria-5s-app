@@ -15,48 +15,12 @@ workflows:
       - name: Adicionar permissões (câmera, fotos, arquivos)
         script: |
           perl -0777 -pi -e 's#<application#<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <application#' android/app/src/main/AndroidManifest.xml
-      - name: Configurar Compartilhamento e Deep Link (.5s)
-        script: |
-          cat << 'EOF' > intent_filter.xml
-              <intent-filter>
-                  <action android:name="android.intent.action.SEND" />
-                  <category android:name="android.intent.category.DEFAULT" />
-                  <data android:mimeType="application/*" />
-                  <data android:mimeType="*/*" />
-              </intent-filter>
-              <intent-filter>
-                  <action android:name="android.intent.action.VIEW" />
-                  <category android:name="android.intent.category.DEFAULT" />
-                  <category android:name="android.intent.category.BROWSABLE" />
-                  <data android:scheme="content" />
-                  <data android:scheme="file" />
-                  <data android:host="*" />
-                  <data android:pathPattern=".*\.5s" />
-              </intent-filter>
-          </activity>
-          EOF
-          perl -0777 -pi -e 's#</activity>#`cat intent_filter.xml`#e' android/app/src/main/AndroidManifest.xml
       - name: Ajustar compileSdk para 36
         script: |
           perl -pi -e 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
-      - name: Instalar dependencias e aplicar correcoes profundas nos plugins
+      - name: Instalar dependencias
         script: |
           flutter pub get
-          
-          # 1. Conserta o erro do JCenter
-          find ~/.pub-cache/hosted -name "build.gradle" -type f -exec perl -pi -e 's/jcenter\(\)/mavenCentral\(\)/g' {} +
-          
-          # 2. Conserta o erro do Namespace ausente especificamente no receive_sharing_intent
-          find ~/.pub-cache/hosted -path "*/receive_sharing_intent*/*" -name "build.gradle" -type f -exec perl -pi -e 's/android \{/android {\n    namespace "com.kasem.receive_sharing_intent"/g' {} +
-          
-          # 3. Força o Java para 17 no receive_sharing_intent
-          find ~/.pub-cache/hosted -path "*/receive_sharing_intent*/*" -name "build.gradle" -type f -exec sh -c 'echo "
-          android {
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-          }" >> "{}"' \;
       - name: Compilar APK
         script: |
           flutter build apk --release
