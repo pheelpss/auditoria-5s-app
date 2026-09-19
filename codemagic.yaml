@@ -18,26 +18,10 @@ workflows:
       - name: Ajustar compileSdk para 36
         script: |
           perl -pi -e 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
-      - name: Registrar app para abrir arquivos .5s
+      - name: Registrar app para abrir arquivos
         script: |
           perl -0777 -pi -e 's#</activity>#<intent-filter>\n          <action android:name="android.intent.action.VIEW" />\n          <category android:name="android.intent.category.DEFAULT" />\n          <data android:mimeType="*/*" android:scheme="content" />\n        </intent-filter>\n        <intent-filter>\n          <action android:name="android.intent.action.SEND" />\n          <category android:name="android.intent.category.DEFAULT" />\n          <data android:mimeType="*/*" />\n        </intent-filter>\n      </activity>#' android/app/src/main/AndroidManifest.xml
           perl -pi -e 's/android:launchMode="singleTop"/android:launchMode="singleTask"/' android/app/src/main/AndroidManifest.xml
-      - name: Corrigir JVM target entre módulos (plugins antigos)
-        script: |
-          cat >> android/build.gradle.kts << 'GRADLEEOF'
-
-          subprojects {
-              extensions.findByType(com.android.build.gradle.BaseExtension::class.java)?.apply {
-                  compileOptions.sourceCompatibility = JavaVersion.VERSION_17
-                  compileOptions.targetCompatibility = JavaVersion.VERSION_17
-              }
-              tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-                  compilerOptions {
-                      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-                  }
-              }
-          }
-          GRADLEEOF
       - name: Instalar dependencias
         script: |
           flutter pub get
