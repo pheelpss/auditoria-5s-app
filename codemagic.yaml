@@ -39,6 +39,17 @@ workflows:
       - name: Ajustar compileSdk para 36
         script: |
           perl -pi -e 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
+      - name: Alinhar Compatibilidade JVM para Java 11
+        script: |
+          echo '
+          allprojects {
+              tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile.class).configureEach {
+                  compilerOptions {
+                      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+                  }
+              }
+          }
+          ' >> android/build.gradle.kts
       - name: Instalar dependencias e aplicar correcoes nos plugins
         script: |
           flutter pub get
