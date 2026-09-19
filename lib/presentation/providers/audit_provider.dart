@@ -184,7 +184,7 @@ class AuditProvider extends ChangeNotifier {
   }
 
   // ====================================================================
-  // SISTEMA DE EXPORTAÇÃO E IMPORTAÇÃO
+  // SISTEMA DE EXPORTAÇÃO E IMPORTAÇÃO VIA ARQUIVO .ZIP COMPATÍVEL COM WHATSAPP
   // ====================================================================
 
   Future<void> exportData(BuildContext context) async {
@@ -226,7 +226,9 @@ class AuditProvider extends ChangeNotifier {
 
       final tempDir = await getTemporaryDirectory();
       final dateStr = DateTime.now().toIso8601String().substring(0, 10);
-      final exportFile = File('${tempDir.path}/Backup_5S_$dateStr.5s');
+      
+      // Mudado para .zip para o WhatsApp permitir baixar facilmente no celular!
+      final exportFile = File('${tempDir.path}/Backup_Auditorias_5S_$dateStr.zip');
       
       final zipBytes = ZipEncoder().encode(archive);
       await exportFile.writeAsBytes(zipBytes!);
@@ -234,7 +236,7 @@ class AuditProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
 
-      await Share.shareXFiles([XFile(exportFile.path)], text: 'Aqui estão minhas auditorias 5S!');
+      await Share.shareXFiles([XFile(exportFile.path)], text: 'Segue o backup das auditorias 5S em formato ZIP.');
     } catch (e) {
       isLoading = false;
       notifyListeners();
@@ -245,13 +247,20 @@ class AuditProvider extends ChangeNotifier {
     }
   }
 
-  // --- Função que processa o arquivo, seja clicando no WhatsApp ou no botão do app ---
-  Future<void> importFromFilePath(String filePath, BuildContext context) async {
+  Future<void> importData(BuildContext context) async {
     try {
+      // Permite selecionar qualquer arquivo zipado do celular
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['zip'],
+      );
+
+      if (result == null || result.files.single.path == null) return;
+
       isLoading = true;
       notifyListeners();
 
-      final file = File(filePath);
+      final file = File(result.files.single.path!);
       final bytes = await file.readAsBytes();
       final archive = ZipDecoder().decodeBytes(bytes);
 
@@ -306,7 +315,7 @@ class AuditProvider extends ChangeNotifier {
         await repository.saveAudit(audit);
       }
 
-      isLoading = false;
+      isLoading     = false;
       notifyListeners();
       await loadHistory();
 
@@ -319,16 +328,8 @@ class AuditProvider extends ChangeNotifier {
       notifyListeners();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro ao importar. O arquivo pode não ser válido.')));
+            const SnackBar(content: Text('Erro ao importar. Certifique-se de selecionar o arquivo .zip correto.')));
       }
-    }
-  }
-
-  // --- Função do botão manual ---
-  Future<void> importData(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.any);
-    if (result != null && result.files.single.path != null) {
-      await importFromFilePath(result.files.single.path!, context);
     }
   }
 }
