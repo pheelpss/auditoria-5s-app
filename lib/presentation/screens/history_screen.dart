@@ -4,13 +4,16 @@ import 'package:provider/provider.dart';
 
 import '../../core/constants/five_s_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/audit_grouping.dart';
 import '../../domain/entities/audit.dart';
 import '../../domain/repositories/audit_repository.dart';
 import '../providers/audit_provider.dart';
 import 'audit_form_screen.dart';
+import 'indicators_screen.dart';
 
-/// Tela de histórico: lista as auditorias já salvas, com filtros por mês,
-/// ano, área e auditor.
+/// Tela inicial: organiza as auditorias salvas em Ano → Mês → Área,
+/// com filtros por mês, ano, área e auditor, e acesso à área de
+/// indicadores.
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -116,11 +119,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<AuditProvider>();
     final audits = provider.history;
+    final grouped = groupAuditsByYearMonthArea(audits);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Auditorias 5S'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.insights_outlined),
+            tooltip: 'Indicadores',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const IndicatorsScreen()),
+            ),
+          ),
           IconButton(icon: const Icon(Icons.filter_alt_outlined), onPressed: _openFilters),
         ],
       ),
@@ -132,8 +144,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   onRefresh: () => provider.loadHistory(),
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(10, 10, 10, 90),
-                    itemCount: audits.length,
-                    itemBuilder: (ctx, i) => _AuditTile(audit: audits[i]),
+                    itemCount: grouped.length,
+                    itemBuilder: (ctx, i) => _YearTile(group: grouped[i]),
                   ),
                 ),
       floatingActionButton: FloatingActionButton.extended(
@@ -171,9 +183,66 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _AuditTile extends StatelessWidget {
+/// Nível "Ano" da árvore — expande para os meses daquele ano.
+class _YearTile extends StatelessWidget {
+  final YearGroup group;
+  const _YearTile({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ExpansionTile(
+        initiallyExpanded: true,
+        leading: const Icon(Icons.calendar_today_outlined),
+        title: Text('${group.year}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        subtitle: Text('${group.totalAudits} auditoria(s)'),
+        children: group.months.map((m) => _MonthTile(group: m)).toList(),
+      ),
+    );
+  }
+}
+
+/// Nível "Mês" — expande para as áreas auditadas naquele mês.
+class _MonthTile extends StatelessWidget {
+  final MonthGroup group;
+  const _MonthTile({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, right: 8),
+      child: ExpansionTile(
+        leading: const Icon(Icons.event_note_outlined, size: 20),
+        title: Text(group.mes, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text('${group.totalAudits} auditoria(s)'),
+        children: group.areas.map((a) => _AreaTile(group: a)).toList(),
+      ),
+    );
+  }
+}
+
+/// Nível "Área" — lista as auditorias daquela área/mês/ano.
+class _AreaTile extends StatelessWidget {
+  final AreaGroup group;
+  const _AreaTile({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, right: 4),
+      child: ExpansionTile(
+        leading: const Icon(Icons.factory_outlined, size: 20),
+        title: Text(group.area, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13.5)),
+        children: group.audits.map((a) => AuditTile(audit: a)).toList(),
+      ),
+    );
+  }
+}
+
+/// Cartão de uma auditoria — usado no histórico e nos indicadores.
+class AuditTile extends StatelessWidget {
   final Audit audit;
-  const _AuditTile({required this.audit});
+  const AuditTile({super.key, required this.audit});
 
   @override
   Widget build(BuildContext context) {
@@ -181,8 +250,9 @@ class _AuditTile extends StatelessWidget {
     final color = nota != null ? AppTheme.colorForScore(nota) : Colors.grey;
 
     return Card(
+      margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 4),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         leading: CircleAvatar(
           backgroundColor: color.withOpacity(0.15),
           child: Text(nota != null ? nota.toStringAsFixed(1) : '-',

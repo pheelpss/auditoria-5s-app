@@ -20,7 +20,7 @@ class DocxGenerator {
   static Future<File> generate(Audit audit, {Audit? previousAudit}) async {
     final builder = _DocxBuilder();
 
-    builder.addTitle('PROGRAMA 5S - ÁREAS FABRIS');
+    builder.addTitle('PROGRAMA 5S');
     builder.addSpacerSmall();
 
     builder.addHeaderInfo([
@@ -230,39 +230,34 @@ class _DocxBuilder {
     } else {
       buffer.write('<w:tblGrid><w:gridCol w:w="8300"/><w:gridCol w:w="900"/></w:tblGrid>');
     }
-    const totalWidth = 9200;
     final questionWidth = temAnterior ? 7400 : 8300;
 
-    // Cabeçalho mesclado com o título do senso.
+    // Cabeçalho: título do senso e, quando há comparação, os rótulos
+    // "ANT."/"ATUAL" na mesma linha — sem linha extra, para reduzir a
+    // altura total da tabela.
     buffer.write('<w:tr>');
-    buffer.write('<w:tc><w:tcPr><w:tcW w:w="$totalWidth" w:type="dxa"/>'
-        '<w:gridSpan w:val="${temAnterior ? 3 : 2}"/>'
+    buffer.write('<w:tc><w:tcPr><w:tcW w:w="$questionWidth" w:type="dxa"/>'
         '<w:shd w:val="clear" w:fill="$_headerFill"/>'
         '<w:tcMar><w:top w:w="20" w:type="dxa"/><w:bottom w:w="20" w:type="dxa"/>'
-        '<w:left w:w="80" w:type="dxa"/></w:tcMar></w:tcPr>');
+        '<w:left w:w="80" w:type="dxa"/></w:tcMar><w:vAlign w:val="center"/></w:tcPr>');
     buffer.write(_paragraphXml(title, bold: true, sizePt: 9, spacingAfter: 0));
-    buffer.write('</w:tc></w:tr>');
-
-    // Cabeçalho de colunas — só é exibido quando há mês anterior para
-    // comparar (sem nenhuma referência a mês/ano específico).
+    buffer.write('</w:tc>');
     if (temAnterior) {
-      buffer.write('<w:tr>');
-      buffer.write('<w:tc><w:tcPr><w:tcW w:w="$questionWidth" w:type="dxa"/>'
-          '<w:shd w:val="clear" w:fill="F2F2F2"/>'
-          '<w:tcMar><w:top w:w="10" w:type="dxa"/><w:bottom w:w="10" w:type="dxa"/>'
-          '<w:left w:w="80" w:type="dxa"/></w:tcMar></w:tcPr>');
-      buffer.write(_paragraphXml('', sizePt: 6, spacingAfter: 0));
+      buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+          '<w:shd w:val="clear" w:fill="$_headerFill"/><w:vAlign w:val="center"/></w:tcPr>');
+      buffer.write(_paragraphXml(colunaAnteriorLabel!, bold: true, sizePt: 6, align: 'center', spacingAfter: 0));
       buffer.write('</w:tc>');
       buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
-          '<w:shd w:val="clear" w:fill="F2F2F2"/><w:vAlign w:val="center"/></w:tcPr>');
-      buffer.write(_paragraphXml(colunaAnteriorLabel, bold: true, sizePt: 6, align: 'center', spacingAfter: 0));
-      buffer.write('</w:tc>');
-      buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
-          '<w:shd w:val="clear" w:fill="F2F2F2"/><w:vAlign w:val="center"/></w:tcPr>');
+          '<w:shd w:val="clear" w:fill="$_headerFill"/><w:vAlign w:val="center"/></w:tcPr>');
       buffer.write(_paragraphXml(colunaAtualLabel ?? '', bold: true, sizePt: 6, align: 'center', spacingAfter: 0));
       buffer.write('</w:tc>');
-      buffer.write('</w:tr>');
+    } else {
+      buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+          '<w:shd w:val="clear" w:fill="$_headerFill"/></w:tcPr>');
+      buffer.write(_paragraphXml('', sizePt: 6, spacingAfter: 0));
+      buffer.write('</w:tc>');
     }
+    buffer.write('</w:tr>');
 
     for (final row in rows) {
       buffer.write('<w:tr>');
