@@ -1,4 +1,11 @@
-import 'package:flutter/foundation.dart';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:archive/archive.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/entities/audit.dart';
@@ -184,5 +191,156 @@ class AuditProvider extends ChangeNotifier {
     _allAudits = await repository.getAudits();
     isLoading = false;
     notifyListeners();
+  }
+
+  // ====================================================================
+  // SISTEMA DE EXPORTAÇÃO E IMPORTAÇÃO DE BACKUP OFFLINE (.5s)
+  // ====================================================================
+
+  /// Compacta o banco de dados e todas as fotos num arquivo único e compartilha.
+  Future<void> exportData(BuildContext context) async {
+    try {
+      isLoading = true;
+      notifyListeners();
+
+      final auditsToExport = await repository.getAudits();
+      if (auditsToExport.isEmpty) {
+        isLoading = false;
+        notifyListeners();
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nenhuma auditoria para exportar.')));
+        return;
+      }
+
+      final archive = Archive();
+      final jsonList = [];
+
+      for (final audit in auditsToExport) {
+        jsonList.add({
+          'audit': audit.toMap(),
+          'items': audit.items.map((i) => i.toMap(audit.id)).toList(),
+          'evidences': audit.evidences.map((e) => e.toMap(audit.id)).toList(),
+        });
+
+        // Adiciona as fotos físicas ao ZIP
+        for (final ev in audit.evidences) {
+          final file = File(ev.filePath);
+          if (await file.exists()) {
+            final bytes = await file.readAsBytes();
+            final ext = ev.fileName.split('.').last;
+            archive.addFile(ArchiveFile('media/${ev.id}.$ext', bytes.length, bytes));
+          }
+        }
+      }
+
+      // Adiciona o banco de dados (JSON) ao ZIP
+      final jsonBytes = utf8.encode(jsonEncode(jsonList));
+      archive.addFile(ArchiveFile('data.json', jsonBytes.length, jsonBytes));
+
+      // Salva o pacote temporariamente
+      final tempDir = await getTemporaryDirectory();
+      
+      // Data formatada para o nome do arquivo
+      final dateStr = DateTime.now().toIso8601String().substring(0, 10);
+      final exportFile = File('${tempDir.path}/Backup_5S_$dateStr.5s');
+      
+      final zipBytes = ZipEncoder().encode(archive);
+      await exportFile.writeAsBytes(zipBytes!);
+
+      isLoading = false;
+      notifyListeners();
+
+      // Abre a tela de compartilhamento (WhatsApp, Drive, etc)
+      await Share.shareXFiles([XFile(exportFile.path)], text: 'Aqui estão minhas auditorias 5S!');
+    } catch (e) {
+      isLoading = false;
+      notifyListeners();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao gerar arquivo: $e')));
+      }
+    }
+  }
+
+  /// Descompacta um arquivo recebido (.5s), extrai as fotos para a memória 
+  /// local e injeta as auditorias no banco de dados.
+  Future<void> importData(BuildContext context) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(type: FileType.any);
+
+      if (result == null || result.files.single.path == null) return;
+
+      isLoading = true;
+      notifyListeners();
+
+      final file = File(result.files.single.path!);
+      final bytes = await file.readAsBytes();
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      final jsonFile = archive.findFile('data.json');
+      if (jsonFile == null) throw Exception('Arquivo inválido ou incompatível.');
+
+      final jsonString = utf8.decode(jsonFile.content as List<int>);
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      final appDir = await getApplicationDocumentsDirectory();
+
+      for (final item in jsonList) {
+        final auditMap = item['audit'];
+        final itemsList = item['items'] as List<dynamic>;
+        final evidencesList = item['evidences'] as List<dynamic>;
+
+        final restoredEvidences = <Evidence>[];
+        
+        for (final evMap in evidencesList) {
+          final ev = Evidence.fromMap(evMap);
+          final ext = ev.fileName.split('.').last;
+          final mediaFile = archive.findFile('media/${ev.id}.$ext');
+
+          String newPath = ev.filePath; 
+
+          // Se a foto veio junto, salva na memória do celular NOVO
+          if (mediaFile != null) {
+            final localFile = File('${appDir.path}/${ev.id}.$ext');
+            await localFile.writeAsBytes(mediaFile.content as List<int>);
+            newPath = localFile.path;
+          }
+
+          restoredEvidences.add(Evidence(
+            id: ev.id,
+            categoryCode: ev.categoryCode,
+            filePath: newPath, // Salva com o caminho novo do celular
+            fileName: ev.fileName,
+            type: ev.type,
+          ));
+        }
+
+        final restoredItems = itemsList.map((iMap) => AuditItem.fromMap(iMap)).toList();
+
+        final audit = Audit.fromMap(
+          auditMap,
+          items: restoredItems,
+          evidences: restoredEvidences,
+        );
+
+        // Injeta a auditoria no banco de dados local
+        await repository.saveAudit(audit);
+      }
+
+      isLoading = false;
+      notifyListeners();
+      await loadHistory();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Auditorias importadas com sucesso!')));
+      }
+    } catch (e) {
+      isLoading = false;
+      notifyListeners();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao importar: $e')));
+      }
+    }
   }
 }
