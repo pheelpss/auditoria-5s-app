@@ -22,6 +22,22 @@ workflows:
         script: |
           perl -0777 -pi -e 's#</activity>#<intent-filter>\n          <action android:name="android.intent.action.VIEW" />\n          <category android:name="android.intent.category.DEFAULT" />\n          <data android:mimeType="*/*" android:scheme="content" />\n        </intent-filter>\n        <intent-filter>\n          <action android:name="android.intent.action.SEND" />\n          <category android:name="android.intent.category.DEFAULT" />\n          <data android:mimeType="*/*" />\n        </intent-filter>\n      </activity>#' android/app/src/main/AndroidManifest.xml
           perl -pi -e 's/android:launchMode="singleTop"/android:launchMode="singleTask"/' android/app/src/main/AndroidManifest.xml
+      - name: Corrigir JVM target entre módulos (plugins antigos)
+        script: |
+          cat >> android/build.gradle.kts << 'GRADLEEOF'
+
+          subprojects {
+              tasks.withType<JavaCompile>().configureEach {
+                  sourceCompatibility = "17"
+                  targetCompatibility = "17"
+              }
+              tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+                  kotlinOptions {
+                      jvmTarget = "17"
+                  }
+              }
+          }
+          GRADLEEOF
       - name: Instalar dependencias
         script: |
           flutter pub get
