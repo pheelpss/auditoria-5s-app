@@ -52,7 +52,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String?>(
                   value: mes,
-                  decoration: const InputDecoration(labelText: 'Mês'),
+                  decoration: const InputDecoration(labelText: 'Mês', isDense: true),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Todos')),
                     ...mesesReferencia.map((m) => DropdownMenuItem(value: m, child: Text(m))),
@@ -61,19 +61,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
                 const SizedBox(height: 10),
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Ano (ex: 2026)'),
+                  decoration: const InputDecoration(labelText: 'Ano (ex: 2026)', isDense: true),
                   keyboardType: TextInputType.number,
                   controller: TextEditingController(text: ano?.toString() ?? ''),
                   onChanged: (v) => ano = int.tryParse(v),
                 ),
                 const SizedBox(height: 10),
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Área auditada'),
+                  decoration: const InputDecoration(labelText: 'Área auditada', isDense: true),
                   controller: areaCtrl,
                 ),
                 const SizedBox(height: 10),
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Auditor'),
+                  decoration: const InputDecoration(labelText: 'Auditor', isDense: true),
                   controller: auditorCtrl,
                 ),
                 const SizedBox(height: 18),
@@ -143,7 +143,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               : RefreshIndicator(
                   onRefresh: () => provider.loadHistory(),
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 90),
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 90),
                     itemCount: grouped.length,
                     itemBuilder: (ctx, i) => _YearTile(group: grouped[i]),
                   ),
@@ -191,11 +191,14 @@ class _YearTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      margin: const EdgeInsets.only(bottom: 4), // Margem reduzida
       child: ExpansionTile(
-        initiallyExpanded: true,
-        leading: const Icon(Icons.calendar_today_outlined),
-        title: Text('${group.year}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        subtitle: Text('${group.totalAudits} auditoria(s)'),
+        // Deixa o ano atual aberto por padrão e os demais fechados (compacto)
+        initiallyExpanded: group.year == DateTime.now().year,
+        visualDensity: VisualDensity.compact,
+        leading: const Icon(Icons.calendar_today_outlined, size: 22),
+        title: Text('${group.year}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        subtitle: Text('${group.totalAudits} auditoria(s)', style: const TextStyle(fontSize: 12)),
         children: group.months.map((m) => _MonthTile(group: m)).toList(),
       ),
     );
@@ -209,14 +212,14 @@ class _MonthTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, right: 8),
-      child: ExpansionTile(
-        leading: const Icon(Icons.event_note_outlined, size: 20),
-        title: Text(group.mes, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text('${group.totalAudits} auditoria(s)'),
-        children: group.areas.map((a) => _AreaTile(group: a)).toList(),
-      ),
+    return ExpansionTile(
+      initiallyExpanded: false, // Inicia fechado para economizar espaço
+      visualDensity: VisualDensity.compact,
+      tilePadding: const EdgeInsets.only(left: 24, right: 16), // Recuo visual
+      leading: const Icon(Icons.event_note_outlined, size: 20),
+      title: Text(group.mes, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      subtitle: Text('${group.totalAudits} auditoria(s)', style: const TextStyle(fontSize: 12)),
+      children: group.areas.map((a) => _AreaTile(group: a)).toList(),
     );
   }
 }
@@ -228,13 +231,13 @@ class _AreaTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, right: 4),
-      child: ExpansionTile(
-        leading: const Icon(Icons.factory_outlined, size: 20),
-        title: Text(group.area, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13.5)),
-        children: group.audits.map((a) => AuditTile(audit: a)).toList(),
-      ),
+    return ExpansionTile(
+      initiallyExpanded: true, // Já exibe as auditorias direto ao abrir o mês
+      visualDensity: VisualDensity.compact,
+      tilePadding: const EdgeInsets.only(left: 40, right: 16),
+      leading: const Icon(Icons.factory_outlined, size: 18),
+      title: Text(group.area, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+      children: group.audits.map((a) => AuditTile(audit: a)).toList(),
     );
   }
 }
@@ -249,44 +252,52 @@ class AuditTile extends StatelessWidget {
     final nota = audit.notaGeral;
     final color = nota != null ? AppTheme.colorForScore(nota) : Colors.grey;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 4),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.15),
-          child: Text(nota != null ? nota.toStringAsFixed(1) : '-',
-              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
-        ),
-        title: Text(audit.area.isEmpty ? '(Área não informada)' : audit.area,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(
-          '${audit.auditor} · ${audit.mesReferencia} · ${DateFormat('dd/MM/yyyy').format(audit.data)}\n${audit.classificacao}',
-        ),
-        isThreeLine: true,
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline),
-          onPressed: () async {
-            final confirm = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('Excluir auditoria?'),
-                content: const Text('Esta ação não pode ser desfeita.'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-                  TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Excluir')),
-                ],
-              ),
-            );
-            if (confirm == true && context.mounted) {
-              context.read<AuditProvider>().deleteAudit(audit.id);
-            }
+    return Padding(
+      padding: const EdgeInsets.only(left: 32.0, right: 8.0, bottom: 4.0),
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 1, // Card mais flat para não poluir visualmente
+        child: ListTile(
+          visualDensity: VisualDensity.compact, // Reduz drasticamente a altura
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+          leading: CircleAvatar(
+            radius: 18, // Avatar menor
+            backgroundColor: color.withOpacity(0.15),
+            child: Text(nota != null ? nota.toStringAsFixed(1) : '-',
+                style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+          title: Text(audit.area.isEmpty ? '(Área não informada)' : audit.area,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          subtitle: Text(
+            '${audit.auditor} · ${DateFormat('dd/MM/yy').format(audit.data)} · ${audit.classificacao}',
+            style: const TextStyle(fontSize: 11),
+          ),
+          trailing: IconButton(
+            icon: const Icon(Icons.delete_outline, size: 20),
+            padding: EdgeInsets.zero, // Remove padding do botão
+            constraints: const BoxConstraints(), // Botão mais compacto
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Excluir auditoria?'),
+                  content: const Text('Esta ação não pode ser desfeita.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Excluir')),
+                  ],
+                ),
+              );
+              if (confirm == true && context.mounted) {
+                context.read<AuditProvider>().deleteAudit(audit.id);
+              }
+            },
+          ),
+          onTap: () {
+            context.read<AuditProvider>().editAudit(audit);
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const AuditFormScreen()));
           },
         ),
-        onTap: () {
-          context.read<AuditProvider>().editAudit(audit);
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AuditFormScreen()));
-        },
       ),
     );
   }
