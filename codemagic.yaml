@@ -46,17 +46,17 @@ workflows:
           # 1. Conserta o erro do JCenter
           find ~/.pub-cache/hosted -name "build.gradle" -type f -exec perl -pi -e 's/jcenter\(\)/mavenCentral\(\)/g' {} +
           
-          # 2. Conserta o erro do Namespace ausente
-          find ~/.pub-cache/hosted -type f -name "build.gradle" | grep "receive_sharing_intent" | xargs perl -pi -e 's/android \{/android {\n    namespace "com.kasem.receive_sharing_intent"/g'
+          # 2. Conserta o erro do Namespace ausente especificamente no receive_sharing_intent
+          find ~/.pub-cache/hosted -path "*/receive_sharing_intent*/*" -name "build.gradle" -type f -exec perl -pi -e 's/android \{/android {\n    namespace "com.kasem.receive_sharing_intent"/g' {} +
           
-          # 3. Força o Java do receive_sharing_intent para 17 (Corrige o conflito JVM)
-          find ~/.pub-cache/hosted -type f -name "build.gradle" | grep "receive_sharing_intent" | xargs -I {} sh -c 'echo "
+          # 3. Força o Java para 17 no receive_sharing_intent
+          find ~/.pub-cache/hosted -path "*/receive_sharing_intent*/*" -name "build.gradle" -type f -exec sh -c 'echo "
           android {
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
               }
-          }" >> "{}"'
+          }" >> "{}"' \;
       - name: Compilar APK
         script: |
           flutter build apk --release
