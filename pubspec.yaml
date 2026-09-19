@@ -24,7 +24,7 @@ dependencies:
   uuid: ^4.3.3
   open_filex: ^4.4.0
   share_plus: ^10.0.0
-  receive_sharing_intent: ^1.4.5
+  receive_sharing_intent: 1.4.5
 
 dev_dependencies:
   flutter_test:
