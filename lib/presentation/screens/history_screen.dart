@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import '../../core/constants/five_s_data.dart';
 import '../../core/theme/app_theme.dart';
@@ -11,9 +13,6 @@ import '../providers/audit_provider.dart';
 import 'audit_form_screen.dart';
 import 'indicators_screen.dart';
 
-/// Tela inicial: organiza as auditorias salvas em Ano → Mês → Área,
-/// com filtros por mês, ano, área e auditor, e acesso à área de
-/// indicadores.
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
@@ -22,12 +21,40 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
+  late StreamSubscription _intentDataStreamSubscription;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuditProvider>().loadHistory();
     });
+
+    // 1. Quando o app está totalmente fechado e o usuário clica no arquivo no WhatsApp
+    ReceiveSharingIntent.getInitialMedia().then((List<SharedMediaFile> value) {
+      if (value.isNotEmpty) {
+        final path = value.first.path;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          context.read<AuditProvider>().importFromFilePath(path, context);
+        });
+      }
+    });
+
+    // 2. Quando o app já está em segundo plano e o usuário clica no arquivo no WhatsApp
+    _intentDataStreamSubscription = ReceiveSharingIntent.getMediaStream().listen((List<SharedMediaFile> value) {
+      if (value.isNotEmpty) {
+        final path = value.first.path;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          context.read<AuditProvider>().importFromFilePath(path, context);
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _intentDataStreamSubscription.cancel();
+    super.dispose();
   }
 
   Future<void> _openFilters() async {
@@ -125,7 +152,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       appBar: AppBar(
         title: const Text('Auditorias 5S'),
         actions: [
-          // Botão de Compartilhar / Importar
           PopupMenuButton<String>(
             icon: const Icon(Icons.sync_alt_outlined),
             tooltip: 'Sincronizar',
@@ -150,7 +176,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 value: 'import',
                 child: ListTile(
                   leading: Icon(Icons.download),
-                  title: Text('Importar Auditorias'),
+                  title: Text('Importar Manualmente'),
                   contentPadding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                 ),
@@ -215,7 +241,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-/// Nível "Ano" da árvore — expande para os meses daquele ano.
 class _YearTile extends StatelessWidget {
   final YearGroup group;
   const _YearTile({required this.group});
@@ -223,9 +248,8 @@ class _YearTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 4), // Margem reduzida
+      margin: const EdgeInsets.only(bottom: 4),
       child: ExpansionTile(
-        // Deixa o ano atual aberto por padrão e os demais fechados (compacto)
         initiallyExpanded: group.year == DateTime.now().year,
         visualDensity: VisualDensity.compact,
         leading: const Icon(Icons.calendar_today_outlined, size: 22),
@@ -237,7 +261,6 @@ class _YearTile extends StatelessWidget {
   }
 }
 
-/// Nível "Mês" — expande para as áreas auditadas naquele mês.
 class _MonthTile extends StatelessWidget {
   final MonthGroup group;
   const _MonthTile({required this.group});
@@ -245,9 +268,9 @@ class _MonthTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ExpansionTile(
-      initiallyExpanded: false, // Inicia fechado para economizar espaço
+      initiallyExpanded: false,
       visualDensity: VisualDensity.compact,
-      tilePadding: const EdgeInsets.only(left: 24, right: 16), // Recuo visual
+      tilePadding: const EdgeInsets.only(left: 24, right: 16),
       leading: const Icon(Icons.event_note_outlined, size: 20),
       title: Text(group.mes, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
       subtitle: Text('${group.totalAudits} auditoria(s)', style: const TextStyle(fontSize: 12)),
@@ -256,7 +279,6 @@ class _MonthTile extends StatelessWidget {
   }
 }
 
-/// Nível "Área" — lista as auditorias daquela área/mês/ano.
 class _AreaTile extends StatelessWidget {
   final AreaGroup group;
   const _AreaTile({required this.group});
@@ -264,7 +286,7 @@ class _AreaTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ExpansionTile(
-      initiallyExpanded: true, // Já exibe as auditorias direto ao abrir o mês
+      initiallyExpanded: true,
       visualDensity: VisualDensity.compact,
       tilePadding: const EdgeInsets.only(left: 40, right: 16),
       leading: const Icon(Icons.factory_outlined, size: 18),
@@ -274,7 +296,6 @@ class _AreaTile extends StatelessWidget {
   }
 }
 
-/// Cartão de uma auditoria — usado no histórico e nos indicadores.
 class AuditTile extends StatelessWidget {
   final Audit audit;
   const AuditTile({super.key, required this.audit});
@@ -288,12 +309,12 @@ class AuditTile extends StatelessWidget {
       padding: const EdgeInsets.only(left: 32.0, right: 8.0, bottom: 4.0),
       child: Card(
         margin: EdgeInsets.zero,
-        elevation: 1, // Card mais flat para não poluir visualmente
+        elevation: 1,
         child: ListTile(
-          visualDensity: VisualDensity.compact, // Reduz drasticamente a altura
+          visualDensity: VisualDensity.compact,
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
           leading: CircleAvatar(
-            radius: 18, // Avatar menor
+            radius: 18,
             backgroundColor: color.withOpacity(0.15),
             child: Text(nota != null ? nota.toStringAsFixed(1) : '-',
                 style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
@@ -306,8 +327,8 @@ class AuditTile extends StatelessWidget {
           ),
           trailing: IconButton(
             icon: const Icon(Icons.delete_outline, size: 20),
-            padding: EdgeInsets.zero, // Remove padding do botão
-            constraints: const BoxConstraints(), // Botão mais compacto
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
             onPressed: () async {
               final confirm = await showDialog<bool>(
                 context: context,
