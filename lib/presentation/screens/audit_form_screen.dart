@@ -9,6 +9,7 @@ import '../widgets/category_section.dart';
 import '../widgets/evidence_picker.dart';
 import '../widgets/header_form.dart';
 import '../widgets/score_indicator.dart';
+import 'audit_preview_screen.dart';
 
 /// Tela principal de preenchimento de uma auditoria 5S: cabeçalho,
 /// categorias com checklist e evidências, nota geral e ações de
