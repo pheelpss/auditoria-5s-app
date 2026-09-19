@@ -22,16 +22,12 @@ class AuditProvider extends ChangeNotifier {
   Audit? _current;
   Audit? get current => _current;
 
-  /// Auditoria anterior da mesma área (mês anterior), usada só para
-  /// comparação em tempo real — nunca é editada.
   Audit? _previous;
   Audit? get previous => _previous;
 
   List<Audit> _history = [];
   List<Audit> get history => _history;
 
-  /// Todas as auditorias, sem filtro nenhum — usado pela tela de
-  /// Indicadores (independente do que estiver filtrado no histórico).
   List<Audit> _allAudits = [];
   List<Audit> get allAudits => _allAudits;
 
@@ -54,9 +50,6 @@ class AuditProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Igual a [startNewAudit], mas já parte com a área (e opcionalmente o
-  /// mês de referência) pré-preenchidos — usado ao tocar num setor
-  /// pendente na tela de Indicadores.
   void startNewAuditFor({required String area, String? mesReferencia}) {
     startNewAudit();
     updateHeader(area: area, mesReferencia: mesReferencia);
@@ -105,8 +98,6 @@ class AuditProvider extends ChangeNotifier {
     }
   }
 
-  /// Busca (em segundo plano) a auditoria mais recente da mesma área
-  /// feita antes da data atual, para exibir a comparação mês a mês.
   Future<void> _refreshPrevious() async {
     final a = _current;
     if (a == null || a.area.trim().isEmpty) {
@@ -119,8 +110,6 @@ class AuditProvider extends ChangeNotifier {
       beforeDate: a.data,
       excludeId: a.id,
     );
-    // Garante que o resultado ainda corresponde à auditoria em edição
-    // (evita condição de corrida se a área mudar de novo enquanto busca).
     if (_current?.id == a.id) {
       _previous = found;
       notifyListeners();
@@ -195,10 +184,9 @@ class AuditProvider extends ChangeNotifier {
   }
 
   // ====================================================================
-  // SISTEMA DE EXPORTAÇÃO E IMPORTAÇÃO DE BACKUP OFFLINE (.5s)
+  // SISTEMA DE EXPORTAÇÃO E IMPORTAÇÃO
   // ====================================================================
 
-  /// Compacta o banco de dados e todas as fotos num arquivo único e compartilha.
   Future<void> exportData(BuildContext context) async {
     try {
       isLoading = true;
@@ -223,7 +211,6 @@ class AuditProvider extends ChangeNotifier {
           'evidences': audit.evidences.map((e) => e.toMap(audit.id)).toList(),
         });
 
-        // Adiciona as fotos físicas ao ZIP
         for (final ev in audit.evidences) {
           final file = File(ev.filePath);
           if (await file.exists()) {
@@ -234,14 +221,10 @@ class AuditProvider extends ChangeNotifier {
         }
       }
 
-      // Adiciona o banco de dados (JSON) ao ZIP
       final jsonBytes = utf8.encode(jsonEncode(jsonList));
       archive.addFile(ArchiveFile('data.json', jsonBytes.length, jsonBytes));
 
-      // Salva o pacote temporariamente
       final tempDir = await getTemporaryDirectory();
-      
-      // Data formatada para o nome do arquivo
       final dateStr = DateTime.now().toIso8601String().substring(0, 10);
       final exportFile = File('${tempDir.path}/Backup_5S_$dateStr.5s');
       
@@ -251,7 +234,6 @@ class AuditProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
 
-      // Abre a tela de compartilhamento (WhatsApp, Drive, etc)
       await Share.shareXFiles([XFile(exportFile.path)], text: 'Aqui estão minhas auditorias 5S!');
     } catch (e) {
       isLoading = false;
@@ -263,18 +245,13 @@ class AuditProvider extends ChangeNotifier {
     }
   }
 
-  /// Descompacta um arquivo recebido (.5s), extrai as fotos para a memória 
-  /// local e injeta as auditorias no banco de dados.
-  Future<void> importData(BuildContext context) async {
+  // --- Função que processa o arquivo, seja clicando no WhatsApp ou no botão do app ---
+  Future<void> importFromFilePath(String filePath, BuildContext context) async {
     try {
-      final result = await FilePicker.platform.pickFiles(type: FileType.any);
-
-      if (result == null || result.files.single.path == null) return;
-
       isLoading = true;
       notifyListeners();
 
-      final file = File(result.files.single.path!);
+      final file = File(filePath);
       final bytes = await file.readAsBytes();
       final archive = ZipDecoder().decodeBytes(bytes);
 
@@ -286,12 +263,10 @@ class AuditProvider extends ChangeNotifier {
       final appDir = await getApplicationDocumentsDirectory();
 
       for (final item in jsonList) {
-        // Converte os dados brutos com TIPAGEM FORTE
         final auditMap = item['audit'] as Map<String, dynamic>;
         final itemsList = item['items'] as List<dynamic>;
         final evidencesList = item['evidences'] as List<dynamic>;
 
-        // 1. Processa Evidências
         final restoredEvidences = <Evidence>[];
         for (final evData in evidencesList) {
           final evMap = evData as Map<String, dynamic>;
@@ -301,7 +276,6 @@ class AuditProvider extends ChangeNotifier {
 
           String newPath = ev.filePath; 
 
-          // Se a foto veio junto, salva na memória do celular NOVO
           if (mediaFile != null) {
             final localFile = File('${appDir.path}/${ev.id}.$ext');
             await localFile.writeAsBytes(mediaFile.content as List<int>);
@@ -311,27 +285,24 @@ class AuditProvider extends ChangeNotifier {
           restoredEvidences.add(Evidence(
             id: ev.id,
             categoryCode: ev.categoryCode,
-            filePath: newPath, // Salva com o caminho novo do celular
+            filePath: newPath,
             fileName: ev.fileName,
             type: ev.type,
           ));
         }
 
-        // 2. Processa Items com Tipagem Forte para evitar erro de build
         final restoredItems = <AuditItem>[];
         for (final iData in itemsList) {
           final iMap = iData as Map<String, dynamic>;
           restoredItems.add(AuditItem.fromMap(iMap));
         }
 
-        // 3. Monta a Auditoria final
         final audit = Audit.fromMap(
           auditMap,
           items: restoredItems,
           evidences: restoredEvidences,
         );
 
-        // Injeta a auditoria no banco de dados local
         await repository.saveAudit(audit);
       }
 
@@ -348,8 +319,16 @@ class AuditProvider extends ChangeNotifier {
       notifyListeners();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro ao importar: $e')));
+            SnackBar(content: Text('Erro ao importar. O arquivo pode não ser válido.')));
       }
+    }
+  }
+
+  // --- Função do botão manual ---
+  Future<void> importData(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.any);
+    if (result != null && result.files.single.path != null) {
+      await importFromFilePath(result.files.single.path!, context);
     }
   }
 }
