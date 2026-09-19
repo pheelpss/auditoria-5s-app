@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/five_s_data.dart';
-import '../../utils/docx_generator.dart';
 import '../providers/audit_provider.dart';
 import '../widgets/category_section.dart';
 import '../widgets/evidence_picker.dart';
@@ -13,40 +11,9 @@ import 'audit_preview_screen.dart';
 
 /// Tela principal de preenchimento de uma auditoria 5S: cabeçalho,
 /// categorias com checklist e evidências, nota geral e ações de
-/// salvar / gerar relatório Word.
+/// salvar / abrir tela de revisão.
 class AuditFormScreen extends StatelessWidget {
   const AuditFormScreen({super.key});
-
-  Future<void> _gerarRelatorio(BuildContext context) async {
-    final provider = context.read<AuditProvider>();
-    final audit = provider.current!;
-    final messenger = ScaffoldMessenger.of(context);
-
-    // Salva automaticamente antes de gerar o relatório
-    await provider.saveCurrent();
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-    try {
-      final file = await DocxGenerator.generate(audit, previousAudit: provider.previous);
-      if (!context.mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Relatório gerado: ${file.path.split('/').last}'),
-          action: SnackBarAction(label: 'Abrir', onPressed: () => OpenFilex.open(file.path)),
-          duration: const Duration(seconds: 6),
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-      messenger.showSnackBar(SnackBar(content: Text('Erro ao gerar relatório: $e')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -152,9 +119,21 @@ class AuditFormScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: FilledButton.icon(
-              onPressed: provider.isLoading ? null : () => _gerarRelatorio(context),
-              icon: const Icon(Icons.description_outlined),
-              label: const Text('Gerar Relatório Word'),
+              onPressed: () {
+                // Esconde o teclado caso esteja aberto
+                FocusScope.of(context).unfocus();
+                
+                // Salva o rascunho atual antes de ir pra tela de revisão
+                provider.saveCurrent();
+                
+                // Navega para a tela de Preview
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AuditPreviewScreen()),
+                );
+              },
+              icon: const Icon(Icons.fact_check_outlined),
+              label: const Text('Revisar e Gerar Relatório'),
             ),
           ),
         ),
