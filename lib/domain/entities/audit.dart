@@ -17,6 +17,15 @@ class Audit {
   final List<AuditItem> items;
   final List<Evidence> evidences;
 
+  // --- ATALHO MÁGICO PARA EVIDÊNCIAS GLOBAIS ---
+  // Permite que o formulário acesse todas as evidências de forma global 
+  // sem quebrar o formato que o seu banco de dados local já utiliza para salvar.
+  List<Evidence> get globalEvidences => evidences;
+  set globalEvidences(List<Evidence> novas) {
+    evidences.clear();
+    evidences.addAll(novas);
+  }
+
   Audit({
     required this.id,
     required this.responsavel,
