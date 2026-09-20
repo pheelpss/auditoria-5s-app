@@ -124,12 +124,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.sync_alt_outlined),
-            tooltip: 'Sincronizar',
+            tooltip: 'Sincronizar e Exportar',
             onSelected: (value) {
               if (value == 'export') {
                 provider.exportData(context);
               } else if (value == 'import') {
                 provider.importData(context);
+              } else if (value == 'export_excel') {
+                provider.exportDashboardExcel(context);
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -147,6 +149,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 child: ListTile(
                   leading: Icon(Icons.download),
                   title: Text('Importar Backup (.5s)'),
+                  contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+              const PopupMenuDivider(), // Linha separadora
+              const PopupMenuItem<String>(
+                value: 'export_excel',
+                child: ListTile(
+                  leading: Icon(Icons.table_chart_outlined, color: Colors.green),
+                  title: Text('Gerar Tabela p/ Excel'),
                   contentPadding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                 ),
