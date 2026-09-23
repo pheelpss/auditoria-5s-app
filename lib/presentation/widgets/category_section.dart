@@ -52,7 +52,7 @@ class CategorySection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: Text('${q.number}  ${q.text}', style: const TextStyle(fontSize: 13)), // Texto compacto
+                    child: Text('${q.number}  ${q.question}', style: const TextStyle(fontSize: 13)), // Texto compacto
                   ),
                   const SizedBox(width: 6),
                   Builder(builder: (_) {
