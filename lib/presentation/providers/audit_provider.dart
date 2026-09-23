@@ -12,6 +12,7 @@ import '../../domain/entities/audit.dart';
 import '../../domain/entities/evidence.dart';
 import '../../domain/repositories/audit_repository.dart';
 import '../../domain/entities/audit_item.dart';
+import '../../core/constants/setores.dart';
 
 /// Gerencia o estado da auditoria em edição e o histórico de auditorias
 /// já salvas. É o único ponto de acesso das telas ao [AuditRepository].
@@ -85,7 +86,14 @@ class AuditProvider extends ChangeNotifier {
     final dataMudou = data != null && data != a.data;
 
     if (responsavel != null) a.responsavel = responsavel;
-    if (area != null) a.area = area;
+    if (area != null) {
+      a.area = area;
+      if (areaMudou && areaConhecida(area) != null) {
+        a.items
+          ..clear()
+          ..addAll(Audit.buildItemsForArea(area));
+      }
+    }
     if (auditor != null) a.auditor = auditor;
     if (acompanhante != null) a.acompanhante = acompanhante;
     if (data != null) a.data = data;
@@ -105,13 +113,15 @@ class AuditProvider extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    final requestedArea = a.area;
+    final requestedDate = a.data;
     final found = await repository.getPreviousAudit(
-      area: a.area,
-      beforeDate: a.data,
+      area: requestedArea,
+      beforeDate: requestedDate,
       excludeId: a.id,
     );
-    if (_current?.id == a.id) {
-      _previous = found;
+    if (_current?.id == a.id && a.area == requestedArea && a.data == requestedDate) {
+      _previous = found != null && a.hasSameQuestions(found) ? found : null;
       notifyListeners();
     }
   }
@@ -345,119 +355,4 @@ class AuditProvider extends ChangeNotifier {
     }
   }
 
-  // ====================================================================
-  // EXPORTAÇÃO PARA EXCEL (DASHBOARD)
-  // ====================================================================
-
-  Future<void> exportDashboardExcel(BuildContext context) async {
-    try {
-      isLoading = true;
-      notifyListeners();
-
-      final auditsToExport = await repository.getAudits();
-      if (auditsToExport.isEmpty) {
-        isLoading = false;
-        notifyListeners();
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Nenhuma auditoria para exportar.')));
-        return;
-      }
-
-      // 1. Organizar dados por Área -> Mês -> Lista de Notas (pois pode haver mais de uma no mês)
-      final areaData = <String, Map<String, List<double>>>{};
-
-      for (final audit in auditsToExport) {
-        final area = audit.area.trim();
-        final mes = audit.mesReferencia;
-        final nota = audit.notaGeral;
-
-        if (area.isEmpty || nota == null) continue;
-
-        areaData.putIfAbsent(area, () => {});
-        areaData[area]!.putIfAbsent(mes, () => []);
-        areaData[area]![mes]!.add(nota);
-      }
-
-      // 2. Mapear meses para garantir a ordem correta nas colunas
-      const meses = [
-        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-      ];
-
-      // 3. Inteligência para classificar Fabril vs Administrativo
-      String getCategoria(String areaName) {
-        final adminKeywords = [
-          'rh', 'escritório', 'escritorio', 'financeiro', 'ti', 'vendas', 
-          'recepção', 'adm', 'administrativo', 'logística', 'almoxarifado', 
-          'diretoria', 'compras', 'qualidade'
-        ];
-        final lower = areaName.toLowerCase();
-        for (final kw in adminKeywords) {
-          if (lower.contains(kw)) return 'Administrativo';
-        }
-        return 'Fabril'; // Se não tiver palavra de escritório, assume que é fábrica
-      }
-
-      final csv = StringBuffer();
-      // O código \xEF\xBB\xBF é o BOM (Byte Order Mark). Ele força o Excel a 
-      // ler acentos corretamente (ç, ã, í) no Brasil sem bugar as letras.
-      csv.write('\xEF\xBB\xBF'); 
-      
-      // Cabeçalho da tabela separada por Ponto e Vírgula
-      csv.writeln('Categoria;Área;Janeiro;Fevereiro;Março;Abril;Maio;Junho;Julho;Agosto;Setembro;Outubro;Novembro;Dezembro;Média Anual');
-
-      // 4. Construir as linhas da matriz
-      for (final area in areaData.keys) {
-        final cat = getCategoria(area);
-        final linha = [cat, area];
-
-        double somaAnual = 0;
-        int mesesAvaliados = 0;
-
-        for (final mes in meses) {
-          final notasDoMes = areaData[area]![mes];
-          if (notasDoMes == null || notasDoMes.isEmpty) {
-            linha.add('-'); // Mês sem auditoria
-          } else {
-            // Se fizeram 2 auditorias na mesma área no mesmo mês, tira a média delas
-            final mediaMes = notasDoMes.reduce((a, b) => a + b) / notasDoMes.length;
-            // Converte ponto para vírgula para o Excel entender como número no Brasil
-            linha.add(mediaMes.toStringAsFixed(2).replaceAll('.', ',')); 
-            somaAnual += mediaMes;
-            mesesAvaliados++;
-          }
-        }
-
-        // 5. Calcular a média do ano daquela área
-        if (mesesAvaliados > 0) {
-          final mediaAnual = somaAnual / mesesAvaliados;
-          linha.add(mediaAnual.toStringAsFixed(2).replaceAll('.', ','));
-        } else {
-          linha.add('-');
-        }
-
-        csv.writeln(linha.join(';'));
-      }
-
-      // 6. Gerar o arquivo final
-      final tempDir = await getTemporaryDirectory();
-      final dateStr = DateTime.now().toIso8601String().substring(0, 10);
-      final exportFile = File('${tempDir.path}/Dashboard_5S_$dateStr.csv');
-
-      await exportFile.writeAsString(csv.toString());
-
-      isLoading = false;
-      notifyListeners();
-
-      await Share.shareXFiles([XFile(exportFile.path)], text: 'Base de dados 5S cruzada e formatada para Excel.');
-
-    } catch (e) {
-      isLoading = false;
-      notifyListeners();
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro ao gerar Dashboard: $e')));
-      }
-    }
-  }
 }

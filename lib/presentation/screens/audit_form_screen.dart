@@ -37,9 +37,15 @@ class AuditFormScreen extends StatelessWidget {
           children: [
             const HeaderForm(),
             const SizedBox(height: 4),
+            if (audit.items.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text('Selecione a área auditada para carregar as perguntas.'),
+              ),
             
             // Loop de categorias (1S ao 5S)
-            for (final cat in fiveSCategories) CategorySection(category: cat),
+            if (audit.items.isNotEmpty)
+              for (final cat in fiveSCategories) CategorySection(category: cat),
             
             const SizedBox(height: 8),
             
@@ -119,7 +125,7 @@ class AuditFormScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: FilledButton.icon(
-              onPressed: () {
+              onPressed: audit.items.isEmpty ? null : () {
                 // Esconde o teclado caso esteja aberto
                 FocusScope.of(context).unfocus();
                 

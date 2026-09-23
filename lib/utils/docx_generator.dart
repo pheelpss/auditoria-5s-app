@@ -12,12 +12,15 @@ import '../domain/entities/audit.dart';
 import '../domain/entities/evidence.dart';
 
 /// Gera um relatório .DOCX profissional a partir de uma [Audit], no
-/// padrão do formulário físico "PROGRAMA 5S - ÁREAS FABRIS": tabela
+/// padrão dos formulários administrativo e produtivo: tabela
 /// compacta por senso, com pergunta + nota lado a lado e linha de
 /// resultado destacada, seguida das evidências fotográficas com a
 /// orientação e proporção corretas.
 class DocxGenerator {
   static Future<File> generate(Audit audit, {Audit? previousAudit}) async {
+    if (previousAudit != null && !audit.hasSameQuestions(previousAudit)) {
+      previousAudit = null;
+    }
     final builder = _DocxBuilder();
 
     builder.addTitle('PROGRAMA 5S');

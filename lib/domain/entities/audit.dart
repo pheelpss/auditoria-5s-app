@@ -1,4 +1,5 @@
 import '../../core/constants/five_s_data.dart';
+import '../../core/constants/setores.dart';
 import 'audit_item.dart';
 import 'evidence.dart';
 
@@ -39,17 +40,28 @@ class Audit {
     List<AuditItem>? items,
     List<Evidence>? evidences,
   })  : createdAt = createdAt ?? DateTime.now(),
-        items = items ?? _buildDefaultItems(),
+        items = items ?? buildItemsForArea(area),
         evidences = evidences ?? [];
 
-  static List<AuditItem> _buildDefaultItems() {
+  static List<AuditItem> buildItemsForArea(String area) {
     final list = <AuditItem>[];
-    for (final cat in fiveSCategories) {
+    if (areaConhecida(area) == null) return list;
+    final categories = isAdministrativa(area)
+        ? administrativeCategories : productionCategories;
+    for (final cat in categories) {
       for (final q in cat.questions) {
         list.add(AuditItem(categoryCode: cat.code, number: q.number, question: q.text));
       }
     }
     return list;
+  }
+
+  bool hasSameQuestions(Audit other) {
+    if (items.length != other.items.length) return false;
+    return items.every((item) => other.items.any((candidate) =>
+        candidate.categoryCode == item.categoryCode &&
+        candidate.number == item.number &&
+        candidate.question == item.question));
   }
 
   List<AuditItem> itemsFor(String categoryCode) =>

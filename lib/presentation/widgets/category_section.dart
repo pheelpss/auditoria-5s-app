@@ -45,7 +45,7 @@ class CategorySection extends StatelessWidget {
         ),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12), // Padding interno reduzido
         children: [
-          for (final q in category.questions)
+          for (final q in audit.itemsFor(category.code))
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4), // Distância menor entre perguntas
               child: Row(
@@ -64,9 +64,7 @@ class CategorySection extends StatelessWidget {
                     );
                   }),
                   ScoreDropdown(
-                    value: audit.items
-                        .firstWhere((i) => i.categoryCode == category.code && i.number == q.number)
-                        .score,
+                    value: q.score,
                     onChanged: (v) {
                       // Atualiza a nota na tela
                       provider.setScore(category.code, q.number, v);

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/five_s_data.dart';
+import '../../core/constants/setores.dart';
 import '../providers/audit_provider.dart';
 
 /// Formulário do cabeçalho da auditoria: responsável, área, auditor,
@@ -17,7 +18,6 @@ class HeaderForm extends StatefulWidget {
 
 class _HeaderFormState extends State<HeaderForm> {
   late final TextEditingController _responsavel;
-  late final TextEditingController _area;
   late final TextEditingController _auditor;
   late final TextEditingController _acompanhante;
 
@@ -26,7 +26,6 @@ class _HeaderFormState extends State<HeaderForm> {
     super.initState();
     final audit = context.read<AuditProvider>().current!;
     _responsavel = TextEditingController(text: audit.responsavel);
-    _area = TextEditingController(text: audit.area);
     _auditor = TextEditingController(text: audit.auditor);
     _acompanhante = TextEditingController(text: audit.acompanhante);
   }
@@ -34,7 +33,6 @@ class _HeaderFormState extends State<HeaderForm> {
   @override
   void dispose() {
     _responsavel.dispose();
-    _area.dispose();
     _auditor.dispose();
     _acompanhante.dispose();
     super.dispose();
@@ -59,10 +57,38 @@ class _HeaderFormState extends State<HeaderForm> {
               onChanged: (v) => provider.updateHeader(responsavel: v),
             ),
             const SizedBox(height: 10),
-            TextField(
-              controller: _area,
+            InputDecorator(
               decoration: const InputDecoration(labelText: 'Área/Seção Auditada'),
-              onChanged: (v) => provider.updateHeader(area: v),
+              child: DropdownButtonHideUnderline(child: DropdownButton<String>(
+                value: areaConhecida(audit.area),
+                isExpanded: true,
+                hint: const Text('Selecione uma área'),
+                items: [
+                const DropdownMenuItem<String>(enabled: false, child: Text('ADMINISTRATIVO')),
+                ...setoresAdministrativos.map((s) => DropdownMenuItem(value: s, child: Text(s))),
+                const DropdownMenuItem<String>(enabled: false, child: Text('PRODUÇÃO')),
+                ...setoresProducao.map((s) => DropdownMenuItem(value: s, child: Text(s))),
+                ],
+                onChanged: (value) async {
+                if (value == null || value == audit.area) return;
+                if (audit.items.any((item) => item.score != null)) {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Alterar área auditada?'),
+                      content: const Text('As notas das perguntas atuais serão apagadas para carregar o checklist da nova área.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
+                        FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Alterar área')),
+                      ],
+                    ),
+                  );
+                  if (confirm != true || !mounted) return;
+                }
+                provider.updateHeader(area: value);
+                await provider.saveCurrent();
+                },
+              )),
             ),
             const SizedBox(height: 10),
             TextField(

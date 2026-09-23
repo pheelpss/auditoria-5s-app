@@ -10,20 +10,20 @@ depender de servidor (banco SQLite local).
 
 - **Cabeçalho da auditoria**: Responsável, Área/Seção, Auditor(a), Acompanhante,
   Data (date picker) e Mês de Referência (seletor Jan–Dez).
-- **Checklist completo dos 5 sensos** (1S a 5S) com todas as perguntas do
-  formulário original, cada uma com seletor suspenso de nota (0 a 5) — o
-  auditor nunca digita números, apenas toca e escolhe.
+- **Checklists administrativo e produtivo**: ao selecionar uma das 32 áreas,
+  o app carrega as 24 perguntas do modelo correspondente, com nota de 0 a 5.
+  Auditorias anteriores mantêm as perguntas com que foram registradas.
 - **Cálculo automático**: média por senso (Resultado do 1S..5S), Nota Geral 5S
   (média dos 5 resultados) e classificação automática (Muito Ruim → Atende
   Plenamente), com nota numérica, barra de progresso e cor indicativa.
-- **Evidências por categoria**: tirar foto pela câmera, escolher da galeria ou
+- **Evidências da auditoria**: tirar foto pela câmera, escolher da galeria ou
   anexar arquivo (PDF/Word/Excel), com miniaturas e opção de excluir.
 - **Histórico de auditorias** salvas em SQLite local, com filtros por mês, ano,
   área e auditor.
 - **Geração de relatório Word (.docx)**: botão "Gerar Relatório Word" cria um
   arquivo .docx com cabeçalho, todas as notas, resultado de cada senso, nota
-  geral, classificação, comentários e as fotos de evidência organizadas por
-  seção — usando um gerador OOXML próprio (`lib/utils/docx_generator.dart`),
+  geral, classificação, comentários e as fotos de evidência — usando um
+  gerador OOXML próprio (`lib/utils/docx_generator.dart`),
   sem depender de template externo.
 - **Arquitetura limpa**: `domain` (entidades e regras), `data` (SQLite),
   `presentation` (telas, widgets, `Provider` para estado) — pronta para crescer
