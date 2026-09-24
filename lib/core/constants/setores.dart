@@ -1,7 +1,6 @@
 /// Lista fixa dos setores/áreas que devem ser auditados todo mês.
 /// Usada na tela de Indicadores para mostrar o que ainda falta auditar.
 const List<String> setoresAuditaveis = [
-  'ADM',
   'Repuxo',
   'Recebimento',
   'MTG Hera',
@@ -36,7 +35,7 @@ const List<String> setoresAuditaveis = [
 ];
 
 const List<String> setoresAdministrativos = [
-  'ADM', 'Eng. Produto', 'Manutenção ADM', 'PCP', 'MKT', 'Processos',
+  'Eng. Produto', 'Manutenção ADM', 'PCP', 'MKT', 'Processos',
   'SST', 'P&D', 'TI', 'ADM Vendas', 'QA', 'Financeiro', 'RH',
 ];
 

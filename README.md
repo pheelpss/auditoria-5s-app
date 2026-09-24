@@ -10,7 +10,7 @@ depender de servidor (banco SQLite local).
 
 - **Cabeçalho da auditoria**: Responsável, Área/Seção, Auditor(a), Acompanhante,
   Data (date picker) e Mês de Referência (seletor Jan–Dez).
-- **Checklists administrativo e produtivo**: ao selecionar uma das 32 áreas,
+- **Checklists administrativo e produtivo**: ao selecionar uma das 31 áreas,
   o app carrega as 24 perguntas do modelo correspondente, com nota de 0 a 5.
   Auditorias anteriores mantêm as perguntas com que foram registradas.
 - **Cálculo automático**: média por senso (Resultado do 1S..5S), Nota Geral 5S
