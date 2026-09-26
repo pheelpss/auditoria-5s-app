@@ -1,6 +1,6 @@
 workflows:
   android-workflow:
-    name: Android Build
+    name: Ondexa Android Build
     max_build_duration: 30
     environment:
       flutter: stable
@@ -39,6 +39,9 @@ workflows:
       - name: Ajustar compileSdk do plugin de abertura para 36
         script: |
           python3 scripts/fix_splash_compile_sdk.py
+      - name: Definir nome Ondexa no Android
+        script: |
+          python3 scripts/set_app_name.py
       - name: Compilar APK
         script: |
           flutter build apk --release

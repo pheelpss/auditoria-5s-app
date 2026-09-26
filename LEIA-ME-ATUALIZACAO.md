@@ -1,3 +1,9 @@
+# Nome atualizado: Ondexa
+
+O nome no ícone do Android, na lista de aplicativos e no cabeçalho agora é Ondexa. A etapa Definir nome Ondexa no Android aplica o nome automaticamente antes de compilar. Envie também a pasta scripts e o codemagic.yaml atualizados. Na compilação manual, rode python3 scripts/set_app_name.py antes de flutter build apk --release.
+
+Mantidos a logo, a abertura e a correção de compileSdk 36. O identificador técnico do aplicativo foi preservado para manter a identidade da instalação. Versão: 1.0.2+3.
+
 # Atualização visual — aplicativo mobile 5S
 
 Esta pasta contém o projeto Flutter do ZIP fornecido, com a mesma logo do Ordexa no ícone e na abertura. O APK antigo não foi alterado.

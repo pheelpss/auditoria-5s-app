@@ -120,7 +120,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Auditorias 5S'),
+        title: const Text('Ondexa'),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.sync_alt_outlined),

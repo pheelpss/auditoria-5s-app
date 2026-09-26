@@ -112,7 +112,7 @@ class _Auditoria5SAppState extends State<Auditoria5SApp> {
       create: (_) => AuditProvider(AuditRepositoryImpl()),
       child: MaterialApp(
         navigatorKey: _navigatorKey,
-        title: 'Auditoria 5S',
+        title: 'Ondexa',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         home: _openingComplete
