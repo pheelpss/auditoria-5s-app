@@ -36,6 +36,9 @@ workflows:
         script: |
           flutter analyze --no-fatal-infos lib/presentation/screens/opening_screen.dart lib/main.dart
           flutter test test/opening_screen_test.dart
+      - name: Ajustar compileSdk do plugin de abertura para 36
+        script: |
+          python3 scripts/fix_splash_compile_sdk.py
       - name: Compilar APK
         script: |
           flutter build apk --release

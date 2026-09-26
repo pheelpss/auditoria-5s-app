@@ -25,6 +25,7 @@ dart run flutter_launcher_icons
 dart run flutter_native_splash:create
 flutter analyze --no-fatal-infos lib/presentation/screens/opening_screen.dart lib/main.dart
 flutter test test/opening_screen_test.dart
+python3 scripts/fix_splash_compile_sdk.py
 flutter build apk --release
 ```
 
@@ -41,3 +42,13 @@ O APK será gerado em build/app/outputs/flutter-apk/app-release.apk.
 O restante do código de auditoria foi preservado. Este ambiente não possui Flutter/Android SDK: a compilação, os testes Flutter e a visualização em aparelho precisam ser executados no Codemagic ou em ambiente com Flutter. Não está incluído um APK recompilado.
 
 A versão flutter_native_splash 2.4.1 está fixada para manter compatibilidade com archive 3.x usado pelo gerador DOCX original, evitando uma migração desnecessária do gerador de relatórios.
+
+
+## Correção da compilação Android
+O flutter_native_splash 2.4.1 declara compileSdk 31 no próprio módulo Android.
+O script scripts/fix_splash_compile_sdk.py ajusta exclusivamente esse módulo para
+compileSdk 36 após a resolução das dependências, antes de compilar o APK.
+A configuração do aplicativo já usava 36, mas não era herdada pelo plugin.
+Não muda minSdk, targetSdk, identificação do aplicativo nem dados das auditorias.
+O ajuste é reaplicado automaticamente em cada execução do Codemagic, inclusive
+quando o cache das dependências é recriado.
