@@ -1,3 +1,11 @@
+# Correção dos testes da galeria
+
+Foram adicionadas chaves estáveis aos botões anterior, próximo e fechar. Os testes agora identificam diretamente esses IconButton, sem converter o Tooltip/RawTooltip em botão. Nenhum teste foi removido ou desabilitado.
+
+Atualize lib/presentation/screens/evidence_gallery_screen.dart e test/evidence_gallery_test.dart juntos, ou substitua o projeto completo por esta pasta. Execute novamente o workflow do Codemagic. A correção foi revisada estaticamente; Flutter não está disponível localmente para executar a suíte.
+
+---
+
 # Ondexa 1.0.3+4 — Galeria de fotos
 
 Na tela de auditoria, toque em uma miniatura para ampliar a foto. Use as setas ou deslize horizontalmente para percorrer as fotos daquela auditoria. O contador indica a posição. Feche pelo X ou pelo botão Voltar do Android para retornar ao formulário.

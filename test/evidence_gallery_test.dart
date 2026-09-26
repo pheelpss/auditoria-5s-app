@@ -19,18 +19,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(EvidenceGalleryScreen), findsOneWidget);
     expect(find.text('2 / 3'), findsOneWidget);
-    await tester.tap(find.byTooltip('Próxima foto'));
+    await tester.tap(find.byKey(const Key('gallery-next')));
     await tester.pumpAndSettle();
     expect(find.text('3 / 3'), findsOneWidget);
-    expect(tester.widget<IconButton>(find.byTooltip('Próxima foto')).onPressed, isNull);
-    await tester.tap(find.byTooltip('Foto anterior'));
+    expect(tester.widget<IconButton>(find.byKey(const Key('gallery-next'))).onPressed, isNull);
+    await tester.tap(find.byKey(const Key('gallery-previous')));
     await tester.pumpAndSettle();
     expect(find.text('2 / 3'), findsOneWidget);
     await tester.drag(find.byKey(const Key('evidence-gallery-pages')), const Offset(600, 0));
     await tester.pumpAndSettle();
     expect(find.text('1 / 3'), findsOneWidget);
-    expect(tester.widget<IconButton>(find.byTooltip('Foto anterior')).onPressed, isNull);
-    await tester.tap(find.byTooltip('Fechar fotos'));
+    expect(tester.widget<IconButton>(find.byKey(const Key('gallery-previous'))).onPressed, isNull);
+    await tester.tap(find.byKey(const Key('gallery-close')));
     await tester.pumpAndSettle();
     expect(find.byType(EvidenceGalleryScreen), findsNothing);
     expect(find.byType(EvidencePicker), findsOneWidget);
@@ -44,8 +44,8 @@ void main() {
     )));
     await tester.pumpAndSettle();
     expect(find.text('1 / 1'), findsOneWidget);
-    expect(tester.widget<IconButton>(find.byTooltip('Foto anterior')).onPressed, isNull);
-    expect(tester.widget<IconButton>(find.byTooltip('Próxima foto')).onPressed, isNull);
-    expect(find.byTooltip('Fechar fotos'), findsOneWidget);
+    expect(tester.widget<IconButton>(find.byKey(const Key('gallery-previous'))).onPressed, isNull);
+    expect(tester.widget<IconButton>(find.byKey(const Key('gallery-next'))).onPressed, isNull);
+    expect(find.byKey(const Key('gallery-close')), findsOneWidget);
   });
 }

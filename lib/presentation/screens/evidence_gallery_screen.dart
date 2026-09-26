@@ -50,7 +50,8 @@ class _EvidenceGalleryScreenState extends State<EvidenceGalleryScreen> {
         backgroundColor: const Color(0xFF030711),
         foregroundColor: Colors.white,
         leading: IconButton(
-          tooltip: 'Fechar fotos',
+          key: const Key('gallery-close'),
+                    tooltip: 'Fechar fotos',
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -104,6 +105,7 @@ class _EvidenceGalleryScreenState extends State<EvidenceGalleryScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
+                    key: const Key('gallery-previous'),
                     tooltip: 'Foto anterior',
                     iconSize: 32,
                     color: Colors.white,
@@ -118,6 +120,7 @@ class _EvidenceGalleryScreenState extends State<EvidenceGalleryScreen> {
                         style: const TextStyle(color: Colors.white, fontSize: 16)),
                   ),
                   IconButton(
+                    key: const Key('gallery-next'),
                     tooltip: 'Próxima foto',
                     iconSize: 32,
                     color: Colors.white,
