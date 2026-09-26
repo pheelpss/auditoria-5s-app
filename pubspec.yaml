@@ -1,7 +1,7 @@
 name: auditoria_5s
 description: Aplicativo de auditoria 5S para uso industrial em campo.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -30,6 +30,34 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: 2.4.1
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/logo_5s.png
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/branding/logo_5s.png
+  adaptive_icon_background: '#030711'
+  adaptive_icon_foreground: assets/branding/logo_5s.png
+  adaptive_icon_foreground_inset: 0
+
+flutter_native_splash:
+  android: true
+  ios: false
+  web: false
+  color: '#030711'
+  color_dark: '#030711'
+  image: assets/branding/logo_5s.png
+  image_dark: assets/branding/logo_5s.png
+  android_gravity: center
+  android_12:
+    color: '#030711'
+    color_dark: '#030711'
+    image: assets/branding/logo_5s.png
+    image_dark: assets/branding/logo_5s.png
+

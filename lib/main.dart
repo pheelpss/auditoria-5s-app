@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
@@ -8,9 +9,11 @@ import 'core/theme/app_theme.dart';
 import 'data/repositories/audit_repository_impl.dart';
 import 'presentation/providers/audit_provider.dart';
 import 'presentation/screens/history_screen.dart';
+import 'presentation/screens/opening_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const Auditoria5SApp());
 }
 
@@ -24,6 +27,31 @@ class Auditoria5SApp extends StatefulWidget {
 class _Auditoria5SAppState extends State<Auditoria5SApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
   StreamSubscription<List<SharedMediaFile>>? _intentSub;
+  bool _openingComplete = false;
+  bool _importing = false;
+  final List<String> _pendingImports = [];
+
+  void _finishOpening() {
+    if (!mounted || _openingComplete) return;
+    setState(() => _openingComplete = true);
+    // Only the opening requests portrait. Restore the original app policy.
+    unawaited(SystemChrome.setPreferredOrientations([]));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _drainImports());
+  }
+
+  Future<void> _drainImports() async {
+    if (!mounted || !_openingComplete || _importing) return;
+    final context = _navigatorKey.currentContext;
+    if (context == null) return;
+    _importing = true;
+    try {
+      while (mounted && context.mounted && _pendingImports.isNotEmpty) {
+        await _confirmImport(context, _pendingImports.removeAt(0));
+      }
+    } finally {
+      _importing = false;
+    }
+  }
 
   @override
   void initState() {
@@ -44,22 +72,12 @@ class _Auditoria5SAppState extends State<Auditoria5SApp> {
   }
 
   void _handleSharedFiles(List<SharedMediaFile> files) {
-    if (files.isEmpty) return;
-    final path = files.first.path;
-    _tryShowImportDialog(path, tentativas: 10);
-  }
-
-  void _tryShowImportDialog(String path, {required int tentativas}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _navigatorKey.currentContext;
-      if (context != null) {
-        _confirmImport(context, path);
-      } else if (tentativas > 0) {
-        Future.delayed(const Duration(milliseconds: 200), () {
-          _tryShowImportDialog(path, tentativas: tentativas - 1);
-        });
-      }
-    });
+    if (!mounted || files.isEmpty) return;
+    _pendingImports.add(files.first.path);
+    if (_openingComplete) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _drainImports());
+      WidgetsBinding.instance.ensureVisualUpdate();
+    }
   }
 
   Future<void> _confirmImport(BuildContext context, String path) async {
@@ -97,7 +115,9 @@ class _Auditoria5SAppState extends State<Auditoria5SApp> {
         title: 'Auditoria 5S',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
-        home: const HistoryScreen(),
+        home: _openingComplete
+            ? const HistoryScreen()
+            : OpeningScreen(onFinished: _finishOpening),
       ),
     );
   }

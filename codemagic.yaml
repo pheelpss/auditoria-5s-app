@@ -28,8 +28,17 @@ workflows:
       - name: Instalar dependencias
         script: |
           flutter pub get
+      - name: Gerar ícone e abertura nativa
+        script: |
+          dart run flutter_launcher_icons
+          dart run flutter_native_splash:create
+      - name: Verificar abertura
+        script: |
+          flutter analyze --no-fatal-infos lib/presentation/screens/opening_screen.dart lib/main.dart
+          flutter test test/opening_screen_test.dart
       - name: Compilar APK
         script: |
           flutter build apk --release
     artifacts:
       - build/**/outputs/**/*.apk
+
