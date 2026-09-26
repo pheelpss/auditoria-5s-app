@@ -1,3 +1,17 @@
+# Ondexa 1.0.3+4 — Galeria de fotos
+
+Na tela de auditoria, toque em uma miniatura para ampliar a foto. Use as setas ou deslize horizontalmente para percorrer as fotos daquela auditoria. O contador indica a posição. Feche pelo X ou pelo botão Voltar do Android para retornar ao formulário.
+
+A galeria começa na foto tocada, não inclui anexos PDF/Word/Excel e não modifica nem remove as evidências. As fotos podem ser consultadas antes de salvar ou gerar o Word. A primeira e a última foto desativam a seta correspondente. Fotos indisponíveis apresentam mensagem sem impedir a navegação.
+
+Envie esta pasta completa para o repositório e gere novamente pelo Codemagic. Foram mantidos o nome Ondexa, a logo, a abertura e a correção compileSdk 36. O workflow agora inclui os testes da galeria.
+
+Arquivos desta alteração: lib/presentation/screens/evidence_gallery_screen.dart, lib/presentation/widgets/evidence_picker.dart, test/evidence_gallery_test.dart, pubspec.yaml e codemagic.yaml.
+
+Flutter não está instalado no ambiente desta edição. Os testes foram adicionados ao Codemagic, mas não executados localmente; o APK precisa ser compilado e conferido no celular.
+
+---
+
 # Nome atualizado: Ondexa
 
 O nome no ícone do Android, na lista de aplicativos e no cabeçalho agora é Ondexa. A etapa Definir nome Ondexa no Android aplica o nome automaticamente antes de compilar. Envie também a pasta scripts e o codemagic.yaml atualizados. Na compilação manual, rode python3 scripts/set_app_name.py antes de flutter build apk --release.

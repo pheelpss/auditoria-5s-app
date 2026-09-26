@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/entities/evidence.dart';
+import '../screens/evidence_gallery_screen.dart';
 
 /// Área global de "Evidências": permite tirar foto, escolher da
 /// galeria ou anexar arquivos, mostra miniaturas e permite gerenciar
@@ -57,6 +58,15 @@ class EvidencePicker extends StatelessWidget {
     onChanged(updatedList);
   }
   
+  void _openPhoto(BuildContext context, Evidence selected) {
+    final photos = evidences.where((e) => e.type == EvidenceType.photo).toList();
+    final index = photos.indexWhere((e) => e.id == selected.id);
+    if (index < 0) return;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => EvidenceGalleryScreen(photos: photos, initialIndex: index),
+    ));
+  }
+
   void _removeEvidence(String id) {
     final updatedList = evidences.where((e) => e.id != id).toList();
     onChanged(updatedList);
@@ -96,6 +106,7 @@ class EvidencePicker extends StatelessWidget {
             children: evidences
                 .map((ev) => _EvidenceThumb(
                       evidence: ev,
+                      onOpen: () => _openPhoto(context, ev),
                       onRemove: () => _removeEvidence(ev.id),
                     ))
                 .toList(),
@@ -127,8 +138,9 @@ class _ActionChip extends StatelessWidget {
 class _EvidenceThumb extends StatelessWidget {
   final Evidence evidence;
   final VoidCallback onRemove;
+  final VoidCallback onOpen;
   
-  const _EvidenceThumb({required this.evidence, required this.onRemove});
+  const _EvidenceThumb({required this.evidence, required this.onRemove, required this.onOpen});
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +155,20 @@ class _EvidenceThumb extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child: evidence.type == EvidenceType.photo
-              ? Image.file(File(evidence.filePath), fit: BoxFit.cover)
+              ? Semantics(
+                  button: true,
+                  label: 'Ampliar foto ${evidence.fileName}',
+                  child: GestureDetector(
+                    onTap: onOpen,
+                    behavior: HitTestBehavior.opaque,
+                    child: Image.file(File(evidence.filePath), fit: BoxFit.cover,
+                      cacheWidth: 240,
+                      errorBuilder: (_, __, ___) => const Center(
+                        child: Icon(Icons.broken_image_outlined, color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                )
               : Center(
                   child: Padding(
                     padding: const EdgeInsets.all(6.0),
