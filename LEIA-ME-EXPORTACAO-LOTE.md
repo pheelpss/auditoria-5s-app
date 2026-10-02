@@ -14,4 +14,4 @@ Auditorias completas e rascunhos podem ser incluídos. O ZIP contém somente os 
 
 Quando todas as auditorias selecionadas pertencem ao mesmo mês e ano, os DOCX ficam diretamente na raiz do ZIP. Quando existem meses ou anos diferentes, os relatórios são organizados em pastas por ano e mês. Nomes repetidos recebem os sufixos `_02`, `_03` e assim por diante.
 
-Versão desta atualização: **1.0.4+5**.
+Versão desta atualização: **1.0.5+6**.

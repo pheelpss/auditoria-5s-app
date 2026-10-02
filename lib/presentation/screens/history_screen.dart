@@ -455,21 +455,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 child: Material(
                   elevation: 12,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                    child: Row(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: Text(
-                            '$selectedAreaCount área(s) selecionada(s)',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
+                        Text(
+                          '$selectedAreaCount área(s) selecionada(s)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        FilledButton.icon(
-                          onPressed: _selectedAuditIds.isEmpty || _isGeneratingBatch
-                              ? null
-                              : _generateBatchZip,
-                          icon: const Icon(Icons.folder_zip_outlined),
-                          label: const Text('Gerar ZIP'),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: _selectedAuditIds.isEmpty || _isGeneratingBatch
+                                ? null
+                                : _generateBatchZip,
+                            icon: const Icon(Icons.folder_zip_outlined),
+                            label: const Text('Gerar ZIP'),
+                          ),
                         ),
                       ],
                     ),
