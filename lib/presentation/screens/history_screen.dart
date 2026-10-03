@@ -581,6 +581,8 @@ class _MonthTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ExpansionTile(
       initiallyExpanded: false,
+      dense: true,
+      minTileHeight: 48,
       visualDensity: VisualDensity.compact,
       tilePadding: const EdgeInsets.only(left: 24, right: 16),
       leading: const Icon(Icons.event_note_outlined, size: 20),
@@ -640,8 +642,13 @@ class _AreaTile extends StatelessWidget {
       onLongPress: () => onLongPress(group),
       child: ExpansionTile(
         initiallyExpanded: true,
+        dense: true,
+        minTileHeight: 44,
         visualDensity: VisualDensity.compact,
         tilePadding: const EdgeInsets.only(left: 40, right: 16),
+        childrenPadding: const EdgeInsets.only(bottom: 2),
+        shape: const Border(bottom: BorderSide(color: Color(0xFFDCE1E7))),
+        collapsedShape: const Border(bottom: BorderSide(color: Color(0xFFDCE1E7))),
         leading: const Icon(Icons.factory_outlined, size: 18),
         title: Text(group.area, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
         children: group.audits.map((a) => AuditTile(audit: a)).toList(),
@@ -654,56 +661,77 @@ class AuditTile extends StatelessWidget {
   final Audit audit;
   const AuditTile({super.key, required this.audit});
 
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir auditoria?'),
+        content: const Text('Esta ação não pode ser desfeita.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Excluir')),
+        ],
+      ),
+    );
+    if (confirm == true && context.mounted) {
+      await context.read<AuditProvider>().deleteAudit(audit.id);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final nota = audit.notaGeral;
     final color = nota != null ? AppTheme.colorForScore(nota) : Colors.grey;
-
     return Padding(
-      padding: const EdgeInsets.only(left: 32.0, right: 8.0, bottom: 4.0),
+      padding: const EdgeInsets.only(left: 32, right: 8, bottom: 4),
       child: Card(
         margin: EdgeInsets.zero,
-        elevation: 1,
-        child: ListTile(
-          visualDensity: VisualDensity.compact,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-          leading: CircleAvatar(
-            radius: 18,
-            backgroundColor: color.withOpacity(0.15),
-            child: Text(nota != null ? nota.toStringAsFixed(1) : '-',
-                style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
-          ),
-          title: Text(audit.area.isEmpty ? '(Área não informada)' : audit.area,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-          subtitle: Text(
-            '${audit.auditor} · ${DateFormat('dd/MM/yy').format(audit.data)} · ${audit.classificacao}',
-            style: const TextStyle(fontSize: 11),
-          ),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete_outline, size: 20),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Excluir auditoria?'),
-                  content: const Text('Esta ação não pode ser desfeita.'),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Excluir')),
-                  ],
-                ),
-              );
-              if (confirm == true && context.mounted) {
-                context.read<AuditProvider>().deleteAudit(audit.id);
-              }
-            },
-          ),
+        elevation: 0.4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFDCE1E7)),
+        ),
+        child: InkWell(
+          key: ValueKey('audit-card-${audit.id}'),
+          borderRadius: BorderRadius.circular(12),
           onTap: () {
             context.read<AuditProvider>().editAudit(audit);
             Navigator.push(context, MaterialPageRoute(builder: (_) => const AuditFormScreen()));
           },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: color.withOpacity(0.15),
+                  child: Text(nota != null ? nota.toStringAsFixed(1) : '-',
+                      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(audit.area.isEmpty ? '(Área não informada)' : audit.area,
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      Text(
+                        '${audit.auditor} · ${DateFormat('dd/MM/yy').format(audit.data)} · ${audit.classificacao}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                  onPressed: () => _confirmDelete(context),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

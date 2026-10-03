@@ -162,7 +162,9 @@ class AuditProvider extends ChangeNotifier {
 
   Future<void> saveCurrent() async {
     final a = _current;
-    if (a == null) return;
+    // Opening a form is not a draft until an area has been selected.
+    // All automatic saves (back, comments and evidence) pass through here.
+    if (a == null || a.area.trim().isEmpty) return;
     isLoading = true;
     notifyListeners();
     await repository.saveAudit(a);

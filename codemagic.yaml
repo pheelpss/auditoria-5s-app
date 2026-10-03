@@ -32,10 +32,10 @@ workflows:
         script: |
           dart run flutter_launcher_icons
           dart run flutter_native_splash:create
-      - name: Verificar abertura
+      - name: Verificar abertura, histórico e rascunhos
         script: |
-          flutter analyze --no-fatal-infos lib/presentation/screens/opening_screen.dart lib/presentation/screens/history_screen.dart lib/utils/batch_docx_exporter.dart lib/main.dart
-          flutter test test/opening_screen_test.dart test/evidence_gallery_test.dart
+          flutter analyze --no-fatal-infos lib/presentation/screens/opening_screen.dart lib/presentation/screens/history_screen.dart lib/presentation/screens/audit_form_screen.dart lib/presentation/providers/audit_provider.dart lib/utils/batch_docx_exporter.dart lib/main.dart test
+          flutter test
       - name: Ajustar compileSdk do plugin de abertura para 36
         script: |
           python3 scripts/fix_splash_compile_sdk.py

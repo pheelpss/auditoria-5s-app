@@ -10,7 +10,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(MaterialApp(home: OpeningScreen(onFinished: finish)));
     await tester.runAsync(() => precacheImage(
-      const AssetImage('assets/branding/logo_5s.png'),
+      const AssetImage('assets/branding/ondexa-logo.png'),
       tester.element(find.byType(OpeningScreen)),
     ));
     await tester.pump();

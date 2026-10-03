@@ -20,12 +20,11 @@ class AuditFormScreen extends StatelessWidget {
     final provider = context.watch<AuditProvider>();
     final audit = provider.current!;
 
-    // PopScope intercepta quando o usuário sai da tela e salva como rascunho.
+    // Ao sair, salva como rascunho somente se uma área foi selecionada.
     return PopScope(
       canPop: true,
       onPopInvoked: (didPop) {
-        // SALVAMENTO AUTOMÁTICO: Salva os dados ao sair da tela
-        provider.saveCurrent();
+        if (didPop) provider.saveCurrent();
       },
       child: Scaffold(
         appBar: AppBar(

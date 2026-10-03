@@ -44,7 +44,7 @@ class _OpeningScreenState extends State<OpeningScreen>
   }
 
   Future<void> _prepareLogo() async {
-    await precacheImage(const AssetImage('assets/branding/logo_5s.png'), context);
+    await precacheImage(const AssetImage('assets/branding/ondexa-logo.png'), context);
     if (!mounted || _leaving) return;
     _timer = Timer(Duration(milliseconds: _reduceMotion ? 600 : 2800), _finish);
   }
@@ -121,7 +121,7 @@ class _OpeningScreenState extends State<OpeningScreen>
                                       spreadRadius: 4,
                                     )],
                                   ),
-                                  child: Image.asset('assets/branding/logo_5s.png',
+                                  child: Image.asset('assets/branding/ondexa-logo.png',
                                       fit: BoxFit.contain, excludeFromSemantics: true),
                                 ),
                               ),
