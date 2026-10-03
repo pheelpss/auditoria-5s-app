@@ -44,7 +44,7 @@ class _OpeningScreenState extends State<OpeningScreen>
   }
 
   Future<void> _prepareLogo() async {
-    await precacheImage(const AssetImage('assets/branding/ondexa-logo.png'), context);
+    await precacheImage(const AssetImage('assets/branding/ondexa-opening-portrait.png'), context);
     if (!mounted || _leaving) return;
     _timer = Timer(Duration(milliseconds: _reduceMotion ? 600 : 2800), _finish);
   }
@@ -94,42 +94,22 @@ class _OpeningScreenState extends State<OpeningScreen>
                 fit: StackFit.expand,
                 children: [
                   CustomPaint(painter: _AmbientPainter(phase)),
-                  SafeArea(
-                    child: LayoutBuilder(builder: (context, bounds) {
-                      final logoSize = math.min(340.0,
-                          math.min(bounds.maxWidth * .80, bounds.maxHeight * .48));
-                      return Center(
-                        child: Transform.translate(
-                          offset: Offset(0, -28 * exit),
-                          child: Transform.scale(
-                            scale: 1 + pulse * .025 - exit * .08,
-                            child: Semantics(
-                              button: true,
-                              label: 'Entrar na auditoria 5S',
-                              child: GestureDetector(
-                                key: const Key('opening-logo'),
-                                onTap: _finish,
-                                behavior: HitTestBehavior.opaque,
-                                child: Container(
-                                  width: logoSize,
-                                  height: logoSize,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    boxShadow: [BoxShadow(
-                                      color: const Color(0xFF00BFFF).withOpacity(.035 + pulse * .045),
-                                      blurRadius: 48 + pulse * 20,
-                                      spreadRadius: 4,
-                                    )],
-                                  ),
-                                  child: Image.asset('assets/branding/ondexa-logo.png',
-                                      fit: BoxFit.contain, excludeFromSemantics: true),
-                                ),
-                              ),
-                            ),
-                          ),
+                  GestureDetector(
+                    key: const Key('opening-logo'),
+                    onTap: _finish,
+                    behavior: HitTestBehavior.opaque,
+                    child: Semantics(
+                      button: true,
+                      label: 'Entrar na auditoria 5S',
+                      child: Transform.scale(
+                        scale: 1 + pulse * .012 - exit * .04,
+                        child: Image.asset(
+                          'assets/branding/ondexa-opening-portrait.png',
+                          fit: BoxFit.contain,
+                          excludeFromSemantics: true,
                         ),
-                      );
-                    }),
+                      ),
+                    ),
                   ),
                 ],
               ),

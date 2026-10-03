@@ -1,5 +1,11 @@
 ONDEXA ANDROID 1.0.7 — BUILD 8
 
+PACOTE CORRIGIDO PARA O ERRO DE IMAGEM AUSENTE NO CODEMAGIC.
+Inclui a imagem vertical em assets/branding e uma copia incorporada no script
+scripts/restore_opening_asset.py. O workflow restaura a imagem se faltar e
+verifica os arquivos de marca antes de instalar dependencias e gerar a abertura.
+Envie tambem scripts/restore_opening_asset.py e codemagic.yaml ao repositorio.
+
 Atualização sobre o projeto 1.0.6, mantendo as melhorias anteriores.
 
 ALTERAÇÕES

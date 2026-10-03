@@ -25,6 +25,9 @@ workflows:
       - name: Corrigir JVM target entre módulos (plugins antigos)
         script: |
           echo "kotlin.jvm.target.validation.mode=warning" >> android/gradle.properties
+      - name: Garantir imagem vertical da abertura
+        script: |
+          python3 scripts/restore_opening_asset.py
       - name: Instalar dependencias
         script: |
           flutter pub get

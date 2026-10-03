@@ -62,12 +62,15 @@ class _HeaderFormState extends State<HeaderForm> {
               child: DropdownButtonHideUnderline(child: DropdownButton<String>(
                 value: areaConhecida(audit.area),
                 isExpanded: true,
+                itemHeight: null,
                 hint: const Text('Selecione uma área'),
                 items: [
-                const DropdownMenuItem<String>(enabled: false, child: Text('ADMINISTRATIVO')),
-                ...setoresAdministrativos.map((s) => DropdownMenuItem(value: s, child: Text(s))),
-                const DropdownMenuItem<String>(enabled: false, child: Text('PRODUÇÃO')),
-                ...setoresProducao.map((s) => DropdownMenuItem(value: s, child: Text(s))),
+                _areaGroupTitle(context, 'ADMINISTRATIVO'),
+                ...setoresAdministrativos.map((s) => DropdownMenuItem(value: s, child: Padding(
+                  padding: const EdgeInsets.only(left: 12), child: Text(s)))),
+                _areaGroupTitle(context, 'PRODUÇÃO'),
+                ...setoresProducao.map((s) => DropdownMenuItem(value: s, child: Padding(
+                  padding: const EdgeInsets.only(left: 12), child: Text(s)))),
                 ],
                 onChanged: (value) async {
                 if (value == null || value == audit.area) return;
@@ -134,4 +137,28 @@ class _HeaderFormState extends State<HeaderForm> {
       ),
     );
   }
+}
+
+/// Disabled section labels use a distinct background and typography.
+DropdownMenuItem<String> _areaGroupTitle(BuildContext context, String title) {
+  final colors = Theme.of(context).colorScheme;
+  return DropdownMenuItem<String>(
+    enabled: false,
+    child: Semantics(
+      header: true,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: colors.primary.withValues(alpha: .08),
+          border: Border(bottom: BorderSide(color: colors.primary.withValues(alpha: .25))),
+        ),
+        child: Text(title, style: TextStyle(
+          color: colors.primary, fontSize: 12, fontWeight: FontWeight.w700,
+          letterSpacing: .8,
+        )),
+      ),
+    ),
+  );
 }

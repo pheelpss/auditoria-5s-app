@@ -35,10 +35,13 @@ class _IndicatorsScreenState extends State<IndicatorsScreen> {
       appBar: AppBar(title: const Text('Status dos Setores')),
       body: provider.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 24), // Espaçamento reduzido
+          : SafeArea(
+              top: false,
+              child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 48),
               itemCount: groups.length,
               itemBuilder: (ctx, i) => _MonthPendingCard(group: groups[i]),
+              ),
             ),
     );
   }
@@ -126,8 +129,9 @@ class _MonthPendingCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('${group.mes}/${group.ano}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                Expanded(child: Text('${group.mes}/${group.ano}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                   decoration: BoxDecoration(

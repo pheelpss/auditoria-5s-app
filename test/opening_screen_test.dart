@@ -10,7 +10,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(MaterialApp(home: OpeningScreen(onFinished: finish)));
     await tester.runAsync(() => precacheImage(
-      const AssetImage('assets/branding/ondexa-logo.png'),
+      const AssetImage('assets/branding/ondexa-opening-portrait.png'),
       tester.element(find.byType(OpeningScreen)),
     ));
     await tester.pump();
@@ -22,8 +22,8 @@ void main() {
     expect(find.byKey(const Key('opening-logo')), findsOneWidget);
     expect(find.text('Dashboard'), findsNothing);
     expect(find.text('Gerador de Apresentações'), findsNothing);
-    await tester.tap(find.byKey(const Key('opening-logo')));
-    await tester.tap(find.byKey(const Key('opening-logo')));
+    await tester.tapAt(const Offset(20, 100));
+    await tester.tapAt(const Offset(20, 100));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(completed, 1);

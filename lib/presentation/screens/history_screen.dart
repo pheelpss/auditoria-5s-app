@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/constants/five_s_data.dart';
+import '../../core/constants/setores.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/audit_grouping.dart';
 import '../../domain/entities/audit.dart';
@@ -649,7 +650,8 @@ class _AreaTile extends StatelessWidget {
         childrenPadding: const EdgeInsets.only(bottom: 2),
         shape: const Border(bottom: BorderSide(color: Color(0xFFDCE1E7))),
         collapsedShape: const Border(bottom: BorderSide(color: Color(0xFFDCE1E7))),
-        leading: const Icon(Icons.factory_outlined, size: 18),
+        leading: Icon(isAdministrativa(group.area)
+            ? Icons.computer_outlined : Icons.factory_outlined, size: 18),
         title: Text(group.area, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
         children: group.audits.map((a) => AuditTile(audit: a)).toList(),
       ),
