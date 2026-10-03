@@ -34,7 +34,7 @@ workflows:
           dart run flutter_native_splash:create
       - name: Verificar abertura, histórico e rascunhos
         script: |
-          flutter analyze --no-fatal-infos lib/presentation/screens/opening_screen.dart lib/presentation/screens/history_screen.dart lib/presentation/screens/audit_form_screen.dart lib/presentation/providers/audit_provider.dart lib/utils/batch_docx_exporter.dart lib/main.dart test
+          flutter analyze --no-fatal-infos lib/presentation/screens/opening_screen.dart lib/presentation/screens/history_screen.dart lib/presentation/screens/indicators_screen.dart lib/presentation/widgets/header_form.dart lib/presentation/screens/audit_form_screen.dart lib/presentation/providers/audit_provider.dart lib/utils/batch_docx_exporter.dart lib/main.dart test
           flutter test
       - name: Ajustar compileSdk do plugin de abertura para 36
         script: |

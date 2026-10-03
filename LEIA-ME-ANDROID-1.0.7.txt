@@ -1,0 +1,37 @@
+ONDEXA ANDROID 1.0.7 — BUILD 8
+
+Atualização sobre o projeto 1.0.6, mantendo as melhorias anteriores.
+
+ALTERAÇÕES
+1. Status dos Setores respeita a barra de navegação do Android e permite
+   rolar os últimos setores mais para cima, com 48 pontos de espaço adicional.
+   O título mensal também se adapta à largura disponível.
+2. A abertura animada utiliza a imagem vertical enviada, sem distorção,
+   com transição suave e toque em qualquer lugar para pular.
+   A abertura nativa anterior ao Flutter também usa a nova imagem nos Android
+   anteriores ao 12. No Android 12 ou superior, a etapa inicial mantém o símbolo
+   central exigido pelo sistema; em seguida aparece a imagem vertical completa.
+   O ícone instalado mantém a logo Ondexa já atualizada.
+3. Áreas administrativas usam ícone de computador no histórico; produção mantém
+   o ícone de fábrica. A classificação existente foi preservada.
+4. ADMINISTRATIVO e PRODUÇÃO ficam destacados por fundo discreto e tipografia
+   de título na lista de áreas. São cabeçalhos desabilitados, não áreas selecionáveis.
+5. Continua valendo: uma auditoria nova só gera rascunho após selecionar uma área.
+
+CODEMAGIC
+Extraia o ZIP e coloque o conteúdo na raiz do repositório conectado ao Codemagic.
+Execute android-workflow (Ondexa Android Build). O workflow cria a pasta Android,
+gera ícone e splash, executa os testes e compila o APK disponível nos artefatos.
+pubspec.yaml e codemagic.yaml devem ficar na raiz, sem pasta intermediária.
+
+O pacote contém código-fonte atualizado; o APK será compilado no Codemagic.
+Use a mesma chave de assinatura do aplicativo instalado para atualizar sem
+desinstalar. O identificador com.suaempresa.auditoria_5s foi preservado e não
+houve alteração da estrutura do banco. Faça backup antes de desinstalar.
+
+VALIDAÇÃO
+14 testes Flutter passaram, incluindo seleção de área com salvamento, ícones
+por categoria, rolagem acima da navegação Android e abertura com toque para pular.
+Análise dos arquivos afetados sem erros ou avisos, apenas informações sobre
+APIs antigas existentes. Geração dos recursos de splash Android concluída.
+Flutter 3.47.6 / Dart 3.13.5. Compilação completa do APK não executada localmente.

@@ -1,7 +1,7 @@
 name: auditoria_5s
 description: Aplicativo de auditoria 5S para uso industrial em campo.
 publish_to: 'none'
-version: 1.0.6+7
+version: 1.0.7+8
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -37,6 +37,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/branding/ondexa-logo.png
+    - assets/branding/ondexa-opening-portrait.png
     - assets/branding/ondexa-icon.png
     - assets/branding/ondexa-icon-foreground.png
     - assets/branding/ondexa-splash-android12.png
@@ -55,9 +56,9 @@ flutter_native_splash:
   web: false
   color: '#030711'
   color_dark: '#030711'
-  image: assets/branding/ondexa-logo.png
-  image_dark: assets/branding/ondexa-logo.png
-  android_gravity: center
+  image: assets/branding/ondexa-opening-portrait.png
+  image_dark: assets/branding/ondexa-opening-portrait.png
+  android_gravity: fill
   android_12:
     color: '#030711'
     color_dark: '#030711'
