@@ -59,9 +59,9 @@ class _Auditoria5SAppState extends State<Auditoria5SApp> {
 
     // Arquivo .5s recebido enquanto o app já está aberto (em segundo plano).
     _intentSub = ReceiveSharingIntent.instance.getMediaStream().listen(
-      _handleSharedFiles,
-      onError: (_) {},
-    );
+          _handleSharedFiles,
+          onError: (_) {},
+        );
 
     // Arquivo .5s que abriu o app agora mesmo (app estava fechado e o
     // usuário tocou no arquivo recebido pelo WhatsApp/e-mail/etc.).
@@ -90,8 +90,12 @@ class _Auditoria5SAppState extends State<Auditoria5SApp> {
           'As auditorias contidas nele serão adicionadas (ou substituídas, se já existirem) no seu aplicativo.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Importar')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Importar')),
         ],
       ),
     );
@@ -115,9 +119,17 @@ class _Auditoria5SAppState extends State<Auditoria5SApp> {
         title: 'Ondexa',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
-        home: _openingComplete
-            ? const HistoryScreen()
-            : OpeningScreen(onFinished: _finishOpening),
+        home: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Mount the history immediately so its database loads during intro.
+            Offstage(
+              offstage: !_openingComplete,
+              child: const HistoryScreen(),
+            ),
+            if (!_openingComplete) OpeningScreen(onFinished: _finishOpening),
+          ],
+        ),
       ),
     );
   }

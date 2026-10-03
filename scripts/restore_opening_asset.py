@@ -15203,7 +15203,7 @@ if not TARGET.is_file():
     print('Imagem vertical da abertura restaurada.')
 if hashlib.sha256(TARGET.read_bytes()).hexdigest() != SHA256:
     raise SystemExit('A imagem da abertura difere da versao esperada. Reenvie o pacote completo.')
-for name in ['ondexa-logo.png', 'ondexa-icon.png', 'ondexa-icon-foreground.png', 'ondexa-splash-android12.png']:
+for name in ['ondexa-logo.png', 'ondexa-icon.png', 'ondexa-icon-foreground.png', 'ondexa-splash-android12.png', 'ondexa-opening.mp4']:
     if not (ROOT / 'assets/branding' / name).is_file():
         raise SystemExit('Arquivo de marca ausente: assets/branding/' + name + '. Reenvie o pacote completo.')
 print('Arquivos de marca verificados.')

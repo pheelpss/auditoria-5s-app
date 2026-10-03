@@ -1,5 +1,19 @@
 # Auditoria 5S — App Mobile (Flutter)
 
+## Ondexa 1.0.8 — abertura em vídeo
+
+A abertura reproduz `assets/branding/ondexa-opening.mp4`, offline, e permite
+pular com um toque em qualquer ponto da tela. O vídeo fornecido tem cerca de
+seis segundos; a reprodução se ajusta para mostrar a animação inteira em cinco.
+O histórico carrega em segundo plano. A imagem estática continua disponível
+durante a inicialização do vídeo e quando o sistema pede animações reduzidas.
+Falhas do player liberam a entrada no aplicativo.
+
+Use Flutter estável (mínimo 3.44 / Dart 3.13) e Android 7.0 ou superior.
+Para gerar o APK pelo Codemagic, envie o conteúdo deste projeto para a raiz
+do repositório, incluindo o MP4, e execute `android-workflow`.
+Consulte `LEIA-ME-ANDROID-1.0.8.txt` para validação e instruções de atualização.
+
 Aplicativo Android para substituir o formulário físico de auditoria 5S por uma
 versão 100% digital: preenchimento do checklist, cálculo automático de notas,
 classificação, anexos de evidências (fotos/arquivos), histórico com filtros e

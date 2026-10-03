@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:video_player/video_player.dart';
 
-/// Portrait-first opening. It never adds a menu or a route to the back stack.
+/// Plays the bundled introduction once, without adding a navigation route.
 class OpeningScreen extends StatefulWidget {
   const OpeningScreen({super.key, required this.onFinished});
   final VoidCallback onFinished;
@@ -12,67 +12,88 @@ class OpeningScreen extends StatefulWidget {
   State<OpeningScreen> createState() => _OpeningScreenState();
 }
 
-class _OpeningScreenState extends State<OpeningScreen>
-    with TickerProviderStateMixin {
-  late final AnimationController _ambient;
-  late final AnimationController _exit;
+class _OpeningScreenState extends State<OpeningScreen> {
+  static const _introDuration = Duration(seconds: 5);
+  VideoPlayerController? _video;
   Timer? _timer;
-  bool _leaving = false;
   bool _started = false;
-  bool _reduceMotion = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ambient = AnimationController(vsync: this, duration: const Duration(seconds: 7));
-    _exit = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
-  }
+  bool _leaving = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _reduceMotion = MediaQuery.of(context).disableAnimations;
-    if (_reduceMotion) {
-      _ambient.stop();
-    } else if (!_ambient.isAnimating) {
-      _ambient.repeat(reverse: true);
-    }
-    if (!_started) {
-      _started = true;
-      _prepareLogo();
+    if (_started) return;
+    _started = true;
+    if (MediaQuery.of(context).disableAnimations) {
+      _timer = Timer(const Duration(milliseconds: 600), _finish);
+    } else {
+      unawaited(_prepareVideo());
     }
   }
 
-  Future<void> _prepareLogo() async {
-    await precacheImage(const AssetImage('assets/branding/ondexa-opening-portrait.png'), context);
+  Future<void> _prepareVideo() async {
+    final video = VideoPlayerController.asset(
+      'assets/branding/ondexa-opening.mp4',
+    );
+    _video = video;
+    // A stalled initialization must not block the app.
+    _timer = Timer(const Duration(seconds: 8), _finish);
+    try {
+      await video.initialize();
+      if (!mounted || _leaving) return;
+      await video.setLooping(false);
+      if (!mounted || _leaving) return;
+      // The supplied clip is six seconds; fit the whole animation into five.
+      if (video.value.duration > _introDuration) {
+        await video.setPlaybackSpeed(
+          video.value.duration.inMilliseconds / _introDuration.inMilliseconds,
+        );
+        if (!mounted || _leaving) return;
+      }
+      video.addListener(_checkPlayback);
+      setState(() {});
+      await video.play();
+      if (!mounted || _leaving) return;
+      _timer?.cancel();
+      // Start the five-second window only after the player starts.
+      _timer = Timer(_introDuration, _finish);
+    } catch (_) {
+      _finish();
+    }
+  }
+
+  void _checkPlayback() {
+    final value = _video?.value;
+    if (value == null || _leaving) return;
+    if (value.hasError ||
+        value.isCompleted ||
+        value.position >= _introDuration) {
+      _finish();
+    }
+  }
+
+  void _finish() {
     if (!mounted || _leaving) return;
-    _timer = Timer(Duration(milliseconds: _reduceMotion ? 600 : 2800), _finish);
-  }
-
-  Future<void> _finish() async {
-    if (_leaving || !mounted) return;
     _leaving = true;
     _timer?.cancel();
-    if (!_reduceMotion) {
-      try {
-        await _exit.forward().orCancel;
-      } on TickerCanceled {
-        return;
-      }
-    }
-    if (mounted) widget.onFinished();
+    // A tap advances immediately, including while the video loads.
+    widget.onFinished();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _ambient.dispose();
-    _exit.dispose();
+    final video = _video;
+    if (video != null) {
+      video.removeListener(_checkPlayback);
+      unawaited(video.dispose());
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final video = _video;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Color(0xFF030711),
@@ -82,77 +103,30 @@ class _OpeningScreenState extends State<OpeningScreen>
       ),
       child: Scaffold(
         backgroundColor: const Color(0xFF030711),
-        body: AnimatedBuilder(
-          animation: Listenable.merge([_ambient, _exit]),
-          builder: (context, _) {
-            final phase = _ambient.value;
-            final exit = Curves.easeInOutCubic.transform(_exit.value);
-            final pulse = _reduceMotion ? 0.0 : math.sin(phase * math.pi);
-            return Opacity(
-              opacity: 1 - exit,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CustomPaint(painter: _AmbientPainter(phase)),
-                  GestureDetector(
-                    key: const Key('opening-logo'),
-                    onTap: _finish,
-                    behavior: HitTestBehavior.opaque,
-                    child: Semantics(
-                      button: true,
-                      label: 'Entrar na auditoria 5S',
-                      child: Transform.scale(
-                        scale: 1 + pulse * .012 - exit * .04,
-                        child: Image.asset(
-                          'assets/branding/ondexa-opening-portrait.png',
-                          fit: BoxFit.contain,
-                          excludeFromSemantics: true,
-                        ),
+        body: GestureDetector(
+          key: const Key('opening-logo'),
+          behavior: HitTestBehavior.opaque,
+          onTap: _finish,
+          child: Semantics(
+            button: true,
+            label: 'Pular abertura e entrar na auditoria 5S',
+            child: SizedBox.expand(
+              child: video != null && video.value.isInitialized
+                  ? Center(
+                      child: AspectRatio(
+                        aspectRatio: video.value.aspectRatio,
+                        child: VideoPlayer(video),
                       ),
+                    )
+                  : Image.asset(
+                      'assets/branding/ondexa-opening-portrait.png',
+                      fit: BoxFit.contain,
+                      excludeFromSemantics: true,
                     ),
-                  ),
-                ],
-              ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
   }
-}
-
-class _AmbientPainter extends CustomPainter {
-  const _AmbientPainter(this.phase);
-  final double phase;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    void glow(Alignment center, Color color) {
-      canvas.drawRect(rect, Paint()..shader = RadialGradient(
-        center: center,
-        radius: .95,
-        colors: [color, color.withOpacity(0)],
-      ).createShader(rect));
-    }
-    glow(Alignment(-.7 + phase * .3, -.4), const Color(0x2222BCF2));
-    glow(Alignment(.8 - phase * .3, .65), const Color(0x22693DF0));
-    final line = Paint()..color = const Color(0x0875BFFF)..strokeWidth = .5;
-    final offset = phase * 30;
-    for (double x = -48 + offset; x < size.width; x += 48) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), line);
-    }
-    for (double y = -48 + offset; y < size.height; y += 48) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
-    }
-    for (int i = 0; i < 18; i++) {
-      final x = ((i * 79.0 + 23) % size.width);
-      final y = ((i * 137.0 + phase * 22) % size.height);
-      canvas.drawCircle(Offset(x, y), i.isEven ? 1.0 : 1.5,
-          Paint()..color = const Color(0x2663D9F5));
-    }
-  }
-
-  @override
-  bool shouldRepaint(_AmbientPainter oldDelegate) => oldDelegate.phase != phase;
 }

@@ -1,0 +1,39 @@
+ONDEXA ANDROID 1.0.8 — BUILD 9
+
+ABERTURA EM VÍDEO
+- Inclui o vídeo enviado em assets/branding/ondexa-opening.mp4 (720 x 1280).
+- O clipe original tem cerca de seis segundos. A velocidade é ajustada para
+  reproduzir a animação inteira em cinco segundos.
+- Um toque em qualquer ponto da tela pula imediatamente, inclusive ao carregar.
+- O histórico é montado e carrega os dados durante a abertura.
+- O vídeo funciona offline, sem baixar arquivos nem pedir novas permissões.
+- Falhas do vídeo liberam a entrada; inicialização travada tem limite de 8 segundos.
+- A imagem existente serve de espera e para a preferência de animações reduzidas.
+- O player e os temporizadores são liberados ao sair da abertura.
+- A abertura nativa exigida pelo Android continua antes da abertura Flutter.
+
+GERAR O APK NO CODEMAGIC
+1. Extraia este ZIP.
+2. Envie o CONTEÚDO da pasta Ondexa-Android-Projeto-1.0.8-Video para a raiz
+   do repositório conectado ao Codemagic. pubspec.yaml e codemagic.yaml ficam
+   na raiz. Inclua assets, lib, scripts e test, especialmente o novo MP4.
+3. Execute android-workflow (Ondexa Android Build).
+4. Baixe o APK nos artefatos ao concluir. O workflow verifica o vídeo,
+   instala as dependências, gera os recursos nativos, testa e compila.
+
+Use Flutter estável (mínimo Flutter 3.44 / Dart 3.13) e Android 7.0+.
+O projeto mantém o identificador configurado com.suaempresa.auditoria_5s.
+Para atualizar o app instalado, use a mesma chave de assinatura e identificador.
+O banco de auditorias não foi alterado.
+
+VALIDAÇÃO LOCAL
+- Flutter 3.47.6 / Dart 3.13.5.
+- Todos os 21 testes Flutter passaram, incluindo dez testes da abertura.
+- Análise dos arquivos da abertura e main sem problemas.
+- Vídeo incluído com conteúdo idêntico ao arquivo fornecido.
+- Não foi gerado um APK local: este computador não tem o Android SDK.
+- Reprodução real no aparelho Android ainda precisa ser verificada após compilar.
+
+TESTE NO APARELHO
+Abra o app e confira a animação inteira, o avanço automático após cinco segundos
+ e a entrada imediata ao tocar na tela. Confira também o histórico existente.
