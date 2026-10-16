@@ -23,7 +23,8 @@ class EvidencePicker extends StatelessWidget {
 
   Future<void> _pickPhoto(BuildContext context, ImageSource source) async {
     final picker = ImagePicker();
-    final xfile = await picker.pickImage(source: source, imageQuality: 80);
+    // Sem limite de dimensões ou qualidade: preserva a imagem retornada.
+    final xfile = await picker.pickImage(source: source);
     if (xfile == null) return;
     
     final newEvidence = Evidence(

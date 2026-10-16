@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
-import 'package:image/image.dart' as img;
+import 'report_photo.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -265,7 +265,7 @@ class _DocxBuilder {
     if (temAnterior) {
       buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
           '<w:shd w:val="clear" w:fill="$_headerFill"/><w:vAlign w:val="center"/></w:tcPr>');
-      buffer.write(_paragraphXml(colunaAnteriorLabel!, bold: true, sizePt: 6, align: 'center', spacingAfter: 0));
+      buffer.write(_paragraphXml(colunaAnteriorLabel, bold: true, sizePt: 6, align: 'center', spacingAfter: 0));
       buffer.write('</w:tc>');
       buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
           '<w:shd w:val="clear" w:fill="$_headerFill"/><w:vAlign w:val="center"/></w:tcPr>');
@@ -432,17 +432,17 @@ class _DocxBuilder {
     _body.write(buffer.toString());
   }
 
-  /// Gera o XML de um parágrafo contendo uma foto redimensionada,
+  /// Gera o XML de um parágrafo contendo uma foto em resolução original,
   /// respeitando a proporção real (aplicando orientação EXIF). Retorna
   /// um parágrafo vazio se a imagem não puder ser decodificada.
   String _imageParagraphXml(Uint8List rawBytes, {required int maxWidthEmu}) {
     final prepared = _prepareImage(rawBytes, maxWidthEmu: maxWidthEmu);
     if (prepared == null) return _paragraphXml('', sizePt: 1, spacingAfter: 0);
-    final (jpgBytes, widthEmu, heightEmu) = prepared;
+    final (photo, widthEmu, heightEmu) = prepared;
 
     _imgCounter++;
     final rId = 'rIdImg$_imgCounter';
-    _images.add(_ImagePart(rId: rId, fileName: 'image$_imgCounter.jpg', bytes: jpgBytes));
+    _images.add(_ImagePart(rId: rId, fileName: 'image$_imgCounter.${photo.extension}', bytes: photo.bytes));
 
     return '''
       <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0" w:before="0"/></w:pPr>
@@ -473,31 +473,12 @@ class _DocxBuilder {
     ''';
   }
 
-  /// Decodifica (aplicando orientação EXIF), redimensiona e calcula as
-  /// dimensões EMU respeitando a proporção real da imagem. Retorna null
-  /// se a imagem não puder ser decodificada.
-  (Uint8List, int, int)? _prepareImage(Uint8List rawBytes, {int maxWidthEmu = 3200000}) {
-    img.Image? decoded;
-    try {
-      decoded = img.decodeImage(rawBytes);
-    } catch (_) {
-      decoded = null;
-    }
-    if (decoded == null) return null;
-
-    img.Image resized = decoded;
-    const maxSide = 900;
-    if (decoded.width > maxSide || decoded.height > maxSide) {
-      resized = decoded.width >= decoded.height
-          ? img.copyResize(decoded, width: maxSide)
-          : img.copyResize(decoded, height: maxSide);
-    }
-    final jpgBytes = Uint8List.fromList(img.encodeJpg(resized, quality: 72));
-
-    final aspect = resized.height / resized.width;
-    final widthEmu = maxWidthEmu;
-    final heightEmu = (maxWidthEmu * aspect).round();
-    return (jpgBytes, widthEmu, heightEmu);
+  /// Ajusta somente o tamanho de exibição na página, nunca os pixels.
+  (ReportPhoto, int, int)? _prepareImage(Uint8List rawBytes, {int maxWidthEmu = 3200000}) {
+    final photo = ReportPhoto.prepare(rawBytes);
+    if (photo == null) return null;
+    final heightEmu = (maxWidthEmu * photo.height / photo.width).round();
+    return (photo, maxWidthEmu, heightEmu);
   }
 
   // ---- Baixo nível ----
@@ -565,6 +546,8 @@ class _DocxBuilder {
     addText('_rels/.rels', _rootRelsXml());
     addText('word/_rels/document.xml.rels', _documentRelsXml());
     addText('word/document.xml', _documentXml());
+    addText('word/settings.xml', '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:doNotAutoCompressPictures/></w:settings>''');
 
     for (final imgPart in _images) {
       archive.addFile(ArchiveFile('word/media/${imgPart.fileName}', imgPart.bytes.length, imgPart.bytes));
@@ -582,6 +565,8 @@ class _DocxBuilder {
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
   $jpgOverride
+  <Default Extension="png" ContentType="image/png"/>
+  <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
 </Types>''';
   }
@@ -598,6 +583,7 @@ class _DocxBuilder {
         .join('\n');
     return '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdSettings" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>
   $rels
 </Relationships>''';
   }

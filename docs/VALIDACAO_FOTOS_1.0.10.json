@@ -1,0 +1,92 @@
+{
+  "runtime": "Dart 3.13.5",
+  "method": "Production sources; temporary directory adapter for path_provider; package:test runner",
+  "flutter_widget_tests_executed_locally": false,
+  "apk_built_locally": false,
+  "tests": [
+    {
+      "name": "all 31 reports include every area question and the existing summary",
+      "result": "success"
+    },
+    {
+      "name": "historical report uses its saved questions and excludes incompatible comparison",
+      "result": "success"
+    },
+    {
+      "name": "matching report comparison and photographic evidence keep their existing sections",
+      "result": "success"
+    },
+    {
+      "name": "DOCX com 1 fotos preserva bytes, resolução e grade",
+      "result": "success"
+    },
+    {
+      "name": "JPEG de 12 megapixels mantém exatamente os bytes e a resolução",
+      "result": "success"
+    },
+    {
+      "name": "DOCX com 2 fotos preserva bytes, resolução e grade",
+      "result": "success"
+    },
+    {
+      "name": "PNG mantém bytes, transparência e resolução original",
+      "result": "success"
+    },
+    {
+      "name": "orientação EXIF 2 preserva os pixels decodificados",
+      "result": "success"
+    },
+    {
+      "name": "orientação EXIF 3 preserva os pixels decodificados",
+      "result": "success"
+    },
+    {
+      "name": "orientação EXIF 4 preserva os pixels decodificados",
+      "result": "success"
+    },
+    {
+      "name": "orientação EXIF 5 preserva os pixels decodificados",
+      "result": "success"
+    },
+    {
+      "name": "orientação EXIF 6 preserva os pixels decodificados",
+      "result": "success"
+    },
+    {
+      "name": "orientação EXIF 7 preserva os pixels decodificados",
+      "result": "success"
+    },
+    {
+      "name": "orientação EXIF 8 preserva os pixels decodificados",
+      "result": "success"
+    },
+    {
+      "name": "DOCX com 3 fotos preserva bytes, resolução e grade",
+      "result": "success"
+    },
+    {
+      "name": "DOCX com 4 fotos preserva bytes, resolução e grade",
+      "result": "success"
+    },
+    {
+      "name": "BMP é convertido em PNG sem perder pixels ou resolução",
+      "result": "success"
+    },
+    {
+      "name": "arquivo não reconhecido não derruba o gerador",
+      "result": "success"
+    },
+    {
+      "name": "DOCX com 5 fotos preserva bytes, resolução e grade",
+      "result": "success"
+    },
+    {
+      "name": "DOCX com 6 fotos preserva bytes, resolução e grade",
+      "result": "success"
+    },
+    {
+      "name": "DOCX com 7 fotos preserva bytes, resolução e grade",
+      "result": "success"
+    }
+  ]
+}
