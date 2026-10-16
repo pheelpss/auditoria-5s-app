@@ -1,3 +1,5 @@
+> Atualização 1.0.10+11: veja [LEIA-ME-FOTOS-1.0.10.md](LEIA-ME-FOTOS-1.0.10.md) para envio ao GitHub e compilação no Codemagic.
+
 # Auditoria 5S — App Mobile (Flutter)
 
 ## Ondexa 1.0.9 — questionários específicos das 31 áreas
