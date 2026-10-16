@@ -27,7 +27,8 @@ const List<String> mesesReferencia = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ];
 
-/// Checklists dos modelos oficiais; as respostas antigas mantêm suas perguntas salvas.
+/// Modelos genéricos anteriores, mantidos como referência de compatibilidade.
+/// Novas auditorias usam area_checklists.dart; as antigas usam seus itens salvos.
 const List<FiveSCategoryDef> administrativeCategories = [
   FiveSCategoryDef(code: '1S', senseName: 'Seiri', title: 'Separação, Utilização e Descarte', questions: [
     FiveSQuestion('1.1', 'Não há papéis, materiais ou itens obsoletos em mesas, gavetas e armários.'),

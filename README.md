@@ -1,6 +1,14 @@
 # Auditoria 5S — App Mobile (Flutter)
 
-## Ondexa 1.0.8 — abertura em vídeo
+## Ondexa 1.0.9 — questionários específicos das 31 áreas
+
+735 perguntas ao todo, de 16 a 28 por área. Abertura, interface, relatórios e
+histórico preservados. As novas auditorias usam o questionário do setor.
+
+Consulte [a atualização e as instruções do Codemagic](docs/ATUALIZACAO_QUESTIONARIOS_2026-10.md).
+O JSON na pasta docs registra as perguntas para a futura atualização do Desktop.
+
+## Abertura em vídeo (mantida da versão 1.0.8)
 
 A abertura reproduz `assets/branding/ondexa-opening.mp4`, offline, e permite
 pular com um toque em qualquer ponto da tela. O vídeo fornecido tem cerca de
@@ -24,8 +32,8 @@ depender de servidor (banco SQLite local).
 
 - **Cabeçalho da auditoria**: Responsável, Área/Seção, Auditor(a), Acompanhante,
   Data (date picker) e Mês de Referência (seletor Jan–Dez).
-- **Checklists administrativo e produtivo**: ao selecionar uma das 31 áreas,
-  o app carrega as 24 perguntas do modelo correspondente, com nota de 0 a 5.
+- **Checklists por área**: ao selecionar uma das 31 áreas,
+  o app carrega entre 16 e 28 perguntas do setor, com nota de 0 a 5.
   Auditorias anteriores mantêm as perguntas com que foram registradas.
 - **Cálculo automático**: média por senso (Resultado do 1S..5S), Nota Geral 5S
   (média dos 5 resultados) e classificação automática (Muito Ruim → Atende
@@ -97,4 +105,4 @@ geradas pelo próprio Flutter SDK, que não está disponível neste ambiente.
   interface `AuditRepository` já existente — basta criar uma nova
   implementação e trocar no `main.dart`.
 - Tela de visualização/edição do relatório antes de gerar o .docx final.
-- Testes automatizados dos cálculos de nota (`lib/domain/entities/audit.dart`).
+- Executar os testes de regressão de questionários e relatórios no Codemagic.

@@ -1,5 +1,5 @@
 import '../../core/constants/five_s_data.dart';
-import '../../core/constants/setores.dart';
+import '../../core/constants/area_checklists.dart';
 import 'audit_item.dart';
 import 'evidence.dart';
 
@@ -45,10 +45,7 @@ class Audit {
 
   static List<AuditItem> buildItemsForArea(String area) {
     final list = <AuditItem>[];
-    if (areaConhecida(area) == null) return list;
-    final categories = isAdministrativa(area)
-        ? administrativeCategories : productionCategories;
-    for (final cat in categories) {
+    for (final cat in checklistForArea(area)) {
       for (final q in cat.questions) {
         list.add(AuditItem(categoryCode: cat.code, number: q.number, question: q.text));
       }
