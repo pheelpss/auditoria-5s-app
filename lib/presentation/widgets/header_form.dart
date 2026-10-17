@@ -49,61 +49,107 @@ class _HeaderFormState extends State<HeaderForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Dados da Auditoria', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Text(
+              'Dados da Auditoria',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: _responsavel,
-              decoration: const InputDecoration(labelText: 'Nome do Responsável'),
-              onChanged: (v) => provider.updateHeader(responsavel: v),
+              decoration: const InputDecoration(
+                labelText: 'Nome do Responsável',
+              ),
+              onChanged: (v) {
+                provider.updateHeader(responsavel: v);
+                provider.saveCurrent();
+              },
             ),
             const SizedBox(height: 10),
             InputDecorator(
-              decoration: const InputDecoration(labelText: 'Área/Seção Auditada'),
-              child: DropdownButtonHideUnderline(child: DropdownButton<String>(
-                value: areaConhecida(audit.area),
-                isExpanded: true,
-                itemHeight: null,
-                hint: const Text('Selecione uma área'),
-                items: [
-                _areaGroupTitle(context, 'ADMINISTRATIVO'),
-                ...setoresAdministrativos.map((s) => DropdownMenuItem(value: s, child: Padding(
-                  padding: const EdgeInsets.only(left: 12), child: Text(s)))),
-                _areaGroupTitle(context, 'PRODUÇÃO'),
-                ...setoresProducao.map((s) => DropdownMenuItem(value: s, child: Padding(
-                  padding: const EdgeInsets.only(left: 12), child: Text(s)))),
-                ],
-                onChanged: (value) async {
-                if (value == null || value == audit.area) return;
-                if (audit.items.any((item) => item.score != null)) {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (dialogContext) => AlertDialog(
-                      title: const Text('Alterar área auditada?'),
-                      content: const Text('As notas das perguntas atuais serão apagadas para carregar o checklist da nova área.'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
-                        FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Alterar área')),
-                      ],
+              decoration: const InputDecoration(
+                labelText: 'Área/Seção Auditada',
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: areaConhecida(audit.area),
+                  isExpanded: true,
+                  itemHeight: null,
+                  hint: const Text('Selecione uma área'),
+                  items: [
+                    _areaGroupTitle(context, 'ADMINISTRATIVO'),
+                    ...setoresAdministrativos.map(
+                      (s) => DropdownMenuItem(
+                        value: s,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 12),
+                          child: Text(s),
+                        ),
+                      ),
                     ),
-                  );
-                  if (confirm != true || !mounted) return;
-                }
-                provider.updateHeader(area: value);
-                await provider.saveCurrent();
-                },
-              )),
+                    _areaGroupTitle(context, 'PRODUÇÃO'),
+                    ...setoresProducao.map(
+                      (s) => DropdownMenuItem(
+                        value: s,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 12),
+                          child: Text(s),
+                        ),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) async {
+                    if (value == null || value == audit.area) return;
+                    if (audit.items.any((item) => item.score != null)) {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogContext) => AlertDialog(
+                          title: const Text('Alterar área auditada?'),
+                          content: const Text(
+                            'As notas das perguntas atuais serão apagadas para carregar o checklist da nova área.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, false),
+                              child: const Text('Cancelar'),
+                            ),
+                            FilledButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, true),
+                              child: const Text('Alterar área'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm != true || !mounted) return;
+                    }
+                    provider.updateHeader(area: value);
+                    await provider.saveCurrent();
+                  },
+                ),
+              ),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: _auditor,
-              decoration: const InputDecoration(labelText: 'Nome do Auditor(a)'),
-              onChanged: (v) => provider.updateHeader(auditor: v),
+              decoration: const InputDecoration(
+                labelText: 'Nome do Auditor(a)',
+              ),
+              onChanged: (v) {
+                provider.updateHeader(auditor: v);
+                provider.saveCurrent();
+              },
             ),
             const SizedBox(height: 10),
             TextField(
               controller: _acompanhante,
-              decoration: const InputDecoration(labelText: 'Nome do Acompanhante da Área'),
-              onChanged: (v) => provider.updateHeader(acompanhante: v),
+              decoration: const InputDecoration(
+                labelText: 'Nome do Acompanhante da Área',
+              ),
+              onChanged: (v) {
+                provider.updateHeader(acompanhante: v);
+                provider.saveCurrent();
+              },
             ),
             const SizedBox(height: 10),
             InkWell(
@@ -114,10 +160,15 @@ class _HeaderFormState extends State<HeaderForm> {
                   firstDate: DateTime(2020),
                   lastDate: DateTime(2100),
                 );
-                if (picked != null) provider.updateHeader(data: picked);
+                if (picked != null) {
+                  provider.updateHeader(data: picked);
+                  await provider.saveCurrent();
+                }
               },
               child: InputDecorator(
-                decoration: const InputDecoration(labelText: 'Data da Auditoria'),
+                decoration: const InputDecoration(
+                  labelText: 'Data da Auditoria',
+                ),
                 child: Text(DateFormat('dd/MM/yyyy').format(audit.data)),
               ),
             ),
@@ -129,7 +180,10 @@ class _HeaderFormState extends State<HeaderForm> {
                   .map((m) => DropdownMenuItem(value: m, child: Text(m)))
                   .toList(),
               onChanged: (v) {
-                if (v != null) provider.updateHeader(mesReferencia: v);
+                if (v != null) {
+                  provider.updateHeader(mesReferencia: v);
+                  provider.saveCurrent();
+                }
               },
             ),
           ],
@@ -152,12 +206,19 @@ DropdownMenuItem<String> _areaGroupTitle(BuildContext context, String title) {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: colors.primary.withValues(alpha: .08),
-          border: Border(bottom: BorderSide(color: colors.primary.withValues(alpha: .25))),
+          border: Border(
+            bottom: BorderSide(color: colors.primary.withValues(alpha: .25)),
+          ),
         ),
-        child: Text(title, style: TextStyle(
-          color: colors.primary, fontSize: 12, fontWeight: FontWeight.w700,
-          letterSpacing: .8,
-        )),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: colors.primary,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: .8,
+          ),
+        ),
       ),
     ),
   );

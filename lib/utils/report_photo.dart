@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
 
-/// Imagem para o Word, sem redução de resolução ou nova compressão com perdas.
+/// Insere a foto já otimizada no Word sem outra compressão com perdas.
 class ReportPhoto {
   final Uint8List bytes;
   final String extension;
@@ -16,8 +16,8 @@ class ReportPhoto {
       final decoder = img.findDecoderForData(source);
       if (decoder == null) return null;
 
-      // JPEG/PNG comuns: basta ler as dimensões. O arquivo original entra
-      // inteiro no DOCX, evitando também alocar milhões de pixels na memória.
+      // JPEG/PNG comuns: basta ler as dimensões. Os bytes recebidos entram
+      // inteiros no DOCX, evitando decodificar novamente os pixels.
       if (decoder is img.JpegDecoder) {
         final orientation = img.decodeJpgExif(source)?.imageIfd.orientation;
         if (orientation == null || orientation == 1) {

@@ -3,7 +3,10 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+
 import 'report_photo.dart';
+import 'evidence_photo_store.dart';
+
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -48,10 +51,12 @@ class DocxGenerator {
         final notaAnterior = previousAudit == null
             ? null
             : previousAudit
-                .itemsFor(cat.code)
-                .firstWhere((i) => i.number == item.number,
-                    orElse: () => item)
-                .score;
+                  .itemsFor(cat.code)
+                  .firstWhere(
+                    (i) => i.number == item.number,
+                    orElse: () => item,
+                  )
+                  .score;
         rows.add([
           '${item.number} ${item.question}',
           if (previousAudit != null) notaAnterior?.toString() ?? '',
@@ -77,7 +82,9 @@ class DocxGenerator {
       media: nota != null ? nota.toStringAsFixed(2) : '',
       classificacao: nota != null ? audit.classificacao : '',
       mediaAnterior: previousAudit != null
-          ? (notaAnteriorGeral != null ? notaAnteriorGeral.toStringAsFixed(2) : '')
+          ? (notaAnteriorGeral != null
+                ? notaAnteriorGeral.toStringAsFixed(2)
+                : '')
           : null,
     );
 
@@ -87,7 +94,7 @@ class DocxGenerator {
     }
 
     // --- SEÇÃO FINAL DE EVIDÊNCIAS ---
-    
+
     // 1. Agrupar todos os arquivos anexos (pega todos, independente da categoria)
     final todosArquivos = audit.evidences
         .where((e) => e.type == EvidenceType.file)
@@ -101,12 +108,15 @@ class DocxGenerator {
 
     // 2. Agrupar todas as evidências fotográficas em grade (pega todas, independente da categoria)
     final todasFotos = <Uint8List>[];
-    final globalPhotos = audit.evidences.where((e) => e.type == EvidenceType.photo);
-    
+    final globalPhotos = audit.evidences.where(
+      (e) => e.type == EvidenceType.photo,
+    );
+
     for (final ev in globalPhotos) {
       final file = File(ev.filePath);
       if (await file.exists()) {
-        todasFotos.add(await file.readAsBytes());
+        final optimized = await EvidencePhotoStore.forReport(ev);
+        todasFotos.add(await optimized.readAsBytes());
       }
     }
 
@@ -121,19 +131,23 @@ class DocxGenerator {
     final bytes = builder.build();
 
     final dir = await getApplicationDocumentsDirectory();
-    final safeArea = audit.area.trim().replaceAll(RegExp(r'[^A-Za-z0-9À-ÿ_-]+'), '_');
-    
+    final safeArea = audit.area.trim().replaceAll(
+      RegExp(r'[^A-Za-z0-9À-ÿ_-]+'),
+      '_',
+    );
+
     // Formata o mês (Ex: Janeiro -> Jan)
     final mesFormatado = audit.mesReferencia.length >= 3
         ? '${audit.mesReferencia[0].toUpperCase()}${audit.mesReferencia.substring(1, 3).toLowerCase()}'
         : audit.mesReferencia;
-        
+
     // Pega os 2 últimos dígitos do ano da data da auditoria
     final ano2Digitos = audit.data.year.toString().substring(2);
-    
+
     // Gera o nome no formato: Auditoria_5S_Jan_Leves_26.docx
-    final fileName = 'Auditoria_5S_${mesFormatado}_${safeArea}_$ano2Digitos.docx';
-    
+    final fileName =
+        'Auditoria_5S_${mesFormatado}_${safeArea}_$ano2Digitos.docx';
+
     final file = File('${dir.path}/$fileName');
     await file.writeAsBytes(bytes, flush: true);
     return file;
@@ -169,13 +183,30 @@ class _DocxBuilder {
   // ---- Blocos de alto nível ----
 
   void addTitle(String text) {
-    _body.write(_paragraphXml(text, bold: true, sizePt: 14, align: 'center', spacingAfter: 40));
+    _body.write(
+      _paragraphXml(
+        text,
+        bold: true,
+        sizePt: 14,
+        align: 'center',
+        spacingAfter: 40,
+      ),
+    );
   }
 
-  void addSpacerSmall() => _body.write(_paragraphXml('', sizePt: 4, spacingAfter: 0));
+  void addSpacerSmall() =>
+      _body.write(_paragraphXml('', sizePt: 4, spacingAfter: 0));
 
   void addSmallLabel(String text) {
-    _body.write(_paragraphXml(text, bold: true, sizePt: 9, spacingAfter: 20, spacingBefore: 40));
+    _body.write(
+      _paragraphXml(
+        text,
+        bold: true,
+        sizePt: 9,
+        spacingAfter: 20,
+        spacingBefore: 40,
+      ),
+    );
   }
 
   void addSmallText(String text) {
@@ -188,8 +219,10 @@ class _DocxBuilder {
     final buffer = StringBuffer();
     buffer.write('<w:tbl>');
     buffer.write(_tblPrXml(borderColor: _borderColor, borderSz: 4));
-    buffer.write('<w:tblGrid><w:gridCol w:w="2500"/><w:gridCol w:w="2200"/>'
-        '<w:gridCol w:w="2500"/><w:gridCol w:w="2200"/></w:tblGrid>');
+    buffer.write(
+      '<w:tblGrid><w:gridCol w:w="2500"/><w:gridCol w:w="2200"/>'
+      '<w:gridCol w:w="2500"/><w:gridCol w:w="2200"/></w:tblGrid>',
+    );
 
     for (var i = 0; i < fields.length; i += 2) {
       buffer.write('<w:tr>');
@@ -209,15 +242,21 @@ class _DocxBuilder {
 
   String _labelValueCells(_Field f) {
     final buffer = StringBuffer();
-    buffer.write('<w:tc><w:tcPr><w:tcW w:w="2500" w:type="dxa"/>'
-        '<w:shd w:val="clear" w:fill="$_headerFill"/>'
-        '<w:tcMar><w:top w:w="15" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/>'
-        '<w:left w:w="60" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tcMar></w:tcPr>');
-    buffer.write(_paragraphXml(f.label, bold: true, sizePt: 8, spacingAfter: 0));
+    buffer.write(
+      '<w:tc><w:tcPr><w:tcW w:w="2500" w:type="dxa"/>'
+      '<w:shd w:val="clear" w:fill="$_headerFill"/>'
+      '<w:tcMar><w:top w:w="15" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/>'
+      '<w:left w:w="60" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tcMar></w:tcPr>',
+    );
+    buffer.write(
+      _paragraphXml(f.label, bold: true, sizePt: 8, spacingAfter: 0),
+    );
     buffer.write('</w:tc>');
-    buffer.write('<w:tc><w:tcPr><w:tcW w:w="2200" w:type="dxa"/>'
-        '<w:tcMar><w:top w:w="15" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/>'
-        '<w:left w:w="60" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tcMar></w:tcPr>');
+    buffer.write(
+      '<w:tc><w:tcPr><w:tcW w:w="2200" w:type="dxa"/>'
+      '<w:tcMar><w:top w:w="15" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/>'
+      '<w:left w:w="60" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tcMar></w:tcPr>',
+    );
     buffer.write(_paragraphXml(f.value, sizePt: 9, spacingAfter: 0));
     buffer.write('</w:tc>');
     return buffer.toString();
@@ -245,10 +284,14 @@ class _DocxBuilder {
     buffer.write('<w:tbl>');
     buffer.write(_tblPrXml(borderColor: _borderColor, borderSz: 4));
     if (temAnterior) {
-      buffer.write('<w:tblGrid><w:gridCol w:w="7400"/><w:gridCol w:w="900"/>'
-          '<w:gridCol w:w="900"/></w:tblGrid>');
+      buffer.write(
+        '<w:tblGrid><w:gridCol w:w="7400"/><w:gridCol w:w="900"/>'
+        '<w:gridCol w:w="900"/></w:tblGrid>',
+      );
     } else {
-      buffer.write('<w:tblGrid><w:gridCol w:w="8300"/><w:gridCol w:w="900"/></w:tblGrid>');
+      buffer.write(
+        '<w:tblGrid><w:gridCol w:w="8300"/><w:gridCol w:w="900"/></w:tblGrid>',
+      );
     }
     final questionWidth = temAnterior ? 7400 : 8300;
 
@@ -256,24 +299,48 @@ class _DocxBuilder {
     // "ANT."/"ATUAL" na mesma linha — sem linha extra, para reduzir a
     // altura total da tabela.
     buffer.write('<w:tr>');
-    buffer.write('<w:tc><w:tcPr><w:tcW w:w="$questionWidth" w:type="dxa"/>'
-        '<w:shd w:val="clear" w:fill="$_headerFill"/>'
-        '<w:tcMar><w:top w:w="20" w:type="dxa"/><w:bottom w:w="20" w:type="dxa"/>'
-        '<w:left w:w="80" w:type="dxa"/></w:tcMar><w:vAlign w:val="center"/></w:tcPr>');
+    buffer.write(
+      '<w:tc><w:tcPr><w:tcW w:w="$questionWidth" w:type="dxa"/>'
+      '<w:shd w:val="clear" w:fill="$_headerFill"/>'
+      '<w:tcMar><w:top w:w="20" w:type="dxa"/><w:bottom w:w="20" w:type="dxa"/>'
+      '<w:left w:w="80" w:type="dxa"/></w:tcMar><w:vAlign w:val="center"/></w:tcPr>',
+    );
     buffer.write(_paragraphXml(title, bold: true, sizePt: 9, spacingAfter: 0));
     buffer.write('</w:tc>');
     if (temAnterior) {
-      buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
-          '<w:shd w:val="clear" w:fill="$_headerFill"/><w:vAlign w:val="center"/></w:tcPr>');
-      buffer.write(_paragraphXml(colunaAnteriorLabel, bold: true, sizePt: 6, align: 'center', spacingAfter: 0));
+      buffer.write(
+        '<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+        '<w:shd w:val="clear" w:fill="$_headerFill"/><w:vAlign w:val="center"/></w:tcPr>',
+      );
+      buffer.write(
+        _paragraphXml(
+          colunaAnteriorLabel,
+          bold: true,
+          sizePt: 6,
+          align: 'center',
+          spacingAfter: 0,
+        ),
+      );
       buffer.write('</w:tc>');
-      buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
-          '<w:shd w:val="clear" w:fill="$_headerFill"/><w:vAlign w:val="center"/></w:tcPr>');
-      buffer.write(_paragraphXml(colunaAtualLabel ?? '', bold: true, sizePt: 6, align: 'center', spacingAfter: 0));
+      buffer.write(
+        '<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+        '<w:shd w:val="clear" w:fill="$_headerFill"/><w:vAlign w:val="center"/></w:tcPr>',
+      );
+      buffer.write(
+        _paragraphXml(
+          colunaAtualLabel ?? '',
+          bold: true,
+          sizePt: 6,
+          align: 'center',
+          spacingAfter: 0,
+        ),
+      );
       buffer.write('</w:tc>');
     } else {
-      buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
-          '<w:shd w:val="clear" w:fill="$_headerFill"/></w:tcPr>');
+      buffer.write(
+        '<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+        '<w:shd w:val="clear" w:fill="$_headerFill"/></w:tcPr>',
+      );
       buffer.write(_paragraphXml('', sizePt: 6, spacingAfter: 0));
       buffer.write('</w:tc>');
     }
@@ -281,41 +348,87 @@ class _DocxBuilder {
 
     for (final row in rows) {
       buffer.write('<w:tr>');
-      buffer.write('<w:tc><w:tcPr><w:tcW w:w="$questionWidth" w:type="dxa"/>'
-          '<w:tcMar><w:top w:w="15" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/>'
-          '<w:left w:w="80" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tcMar></w:tcPr>');
+      buffer.write(
+        '<w:tc><w:tcPr><w:tcW w:w="$questionWidth" w:type="dxa"/>'
+        '<w:tcMar><w:top w:w="15" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/>'
+        '<w:left w:w="80" w:type="dxa"/><w:right w:w="60" w:type="dxa"/></w:tcMar></w:tcPr>',
+      );
       buffer.write(_paragraphXml(row[0], sizePt: 8, spacingAfter: 0));
       buffer.write('</w:tc>');
       if (temAnterior) {
-        buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
-            '<w:vAlign w:val="center"/></w:tcPr>');
-        buffer.write(_paragraphXml(row[1], sizePt: 8.5, align: 'center', spacingAfter: 0));
+        buffer.write(
+          '<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+          '<w:vAlign w:val="center"/></w:tcPr>',
+        );
+        buffer.write(
+          _paragraphXml(row[1], sizePt: 8.5, align: 'center', spacingAfter: 0),
+        );
         buffer.write('</w:tc>');
       }
-      buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
-          '<w:vAlign w:val="center"/></w:tcPr>');
-      buffer.write(_paragraphXml(row[temAnterior ? 2 : 1], sizePt: 8.5, bold: true, align: 'center', spacingAfter: 0));
+      buffer.write(
+        '<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+        '<w:vAlign w:val="center"/></w:tcPr>',
+      );
+      buffer.write(
+        _paragraphXml(
+          row[temAnterior ? 2 : 1],
+          sizePt: 8.5,
+          bold: true,
+          align: 'center',
+          spacingAfter: 0,
+        ),
+      );
       buffer.write('</w:tc>');
       buffer.write('</w:tr>');
     }
 
     // Linha de resultado, destacada.
     buffer.write('<w:tr>');
-    buffer.write('<w:tc><w:tcPr><w:tcW w:w="$questionWidth" w:type="dxa"/>'
-        '<w:shd w:val="clear" w:fill="$_resultFill"/>'
-        '<w:tcMar><w:top w:w="15" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/>'
-        '<w:left w:w="80" w:type="dxa"/></w:tcMar></w:tcPr>');
-    buffer.write(_paragraphXml(resultLabel, bold: true, sizePt: 8.5, align: 'right', spacingAfter: 0));
+    buffer.write(
+      '<w:tc><w:tcPr><w:tcW w:w="$questionWidth" w:type="dxa"/>'
+      '<w:shd w:val="clear" w:fill="$_resultFill"/>'
+      '<w:tcMar><w:top w:w="15" w:type="dxa"/><w:bottom w:w="15" w:type="dxa"/>'
+      '<w:left w:w="80" w:type="dxa"/></w:tcMar></w:tcPr>',
+    );
+    buffer.write(
+      _paragraphXml(
+        resultLabel,
+        bold: true,
+        sizePt: 8.5,
+        align: 'right',
+        spacingAfter: 0,
+      ),
+    );
     buffer.write('</w:tc>');
     if (temAnterior) {
-      buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
-          '<w:shd w:val="clear" w:fill="$_resultFill"/><w:vAlign w:val="center"/></w:tcPr>');
-      buffer.write(_paragraphXml(resultValueAnterior ?? '', bold: true, sizePt: 9, align: 'center', spacingAfter: 0));
+      buffer.write(
+        '<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+        '<w:shd w:val="clear" w:fill="$_resultFill"/><w:vAlign w:val="center"/></w:tcPr>',
+      );
+      buffer.write(
+        _paragraphXml(
+          resultValueAnterior ?? '',
+          bold: true,
+          sizePt: 9,
+          align: 'center',
+          spacingAfter: 0,
+        ),
+      );
       buffer.write('</w:tc>');
     }
-    buffer.write('<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
-        '<w:shd w:val="clear" w:fill="$_resultFill"/><w:vAlign w:val="center"/></w:tcPr>');
-    buffer.write(_paragraphXml(resultValue, bold: true, sizePt: 9, align: 'center', spacingAfter: 0));
+    buffer.write(
+      '<w:tc><w:tcPr><w:tcW w:w="900" w:type="dxa"/>'
+      '<w:shd w:val="clear" w:fill="$_resultFill"/><w:vAlign w:val="center"/></w:tcPr>',
+    );
+    buffer.write(
+      _paragraphXml(
+        resultValue,
+        bold: true,
+        sizePt: 9,
+        align: 'center',
+        spacingAfter: 0,
+      ),
+    );
     buffer.write('</w:tc>');
     buffer.write('</w:tr>');
 
@@ -337,31 +450,41 @@ class _DocxBuilder {
     buffer.write(_tblPrXml(borderColor: _borderColor, borderSz: 6));
     buffer.write('<w:tblGrid><w:gridCol w:w="9200"/></w:tblGrid>');
 
-    buffer.write('<w:tr><w:tc><w:tcPr><w:tcW w:w="9200" w:type="dxa"/>'
-        '<w:shd w:val="clear" w:fill="$_headerFill"/>'
-        '<w:tcMar><w:top w:w="50" w:type="dxa"/><w:bottom w:w="30" w:type="dxa"/>'
-        '<w:left w:w="100" w:type="dxa"/></w:tcMar></w:tcPr>');
-    final comparacao = mediaAnterior != null ? '   (mês anterior: $mediaAnterior)' : '';
-    buffer.write(_richLineXml([
-      _Run('MÉDIA GERAL DA AUDITORIA: ', bold: true, sizePt: 12),
-      _Run(media, bold: true, sizePt: 14),
-      _Run('   |   CLASSIFICAÇÃO: ', bold: true, sizePt: 12),
-      _Run(classificacao.toUpperCase(), bold: true, sizePt: 12),
-      _Run(comparacao, sizePt: 9),
-    ], spacingAfter: 20));
+    buffer.write(
+      '<w:tr><w:tc><w:tcPr><w:tcW w:w="9200" w:type="dxa"/>'
+      '<w:shd w:val="clear" w:fill="$_headerFill"/>'
+      '<w:tcMar><w:top w:w="50" w:type="dxa"/><w:bottom w:w="30" w:type="dxa"/>'
+      '<w:left w:w="100" w:type="dxa"/></w:tcMar></w:tcPr>',
+    );
+    final comparacao = mediaAnterior != null
+        ? '   (mês anterior: $mediaAnterior)'
+        : '';
+    buffer.write(
+      _richLineXml([
+        _Run('MÉDIA GERAL DA AUDITORIA: ', bold: true, sizePt: 12),
+        _Run(media, bold: true, sizePt: 14),
+        _Run('   |   CLASSIFICAÇÃO: ', bold: true, sizePt: 12),
+        _Run(classificacao.toUpperCase(), bold: true, sizePt: 12),
+        _Run(comparacao, sizePt: 9),
+      ], spacingAfter: 20),
+    );
     buffer.write('</w:tc></w:tr>');
 
-    buffer.write('<w:tr><w:tc><w:tcPr><w:tcW w:w="9200" w:type="dxa"/>'
-        '<w:tcMar><w:top w:w="30" w:type="dxa"/><w:bottom w:w="50" w:type="dxa"/>'
-        '<w:left w:w="100" w:type="dxa"/></w:tcMar></w:tcPr>');
-    buffer.write(_richLineXml([
-      _Run('0 – Muito Ruim    ', sizePt: 8),
-      _Run('1 – Ruim    ', sizePt: 8),
-      _Run('2 – Regular    ', sizePt: 8),
-      _Run('3 – Bom    ', sizePt: 8),
-      _Run('4 – Muito Bom    ', sizePt: 8),
-      _Run('5 – Atende Plenamente', sizePt: 8),
-    ], spacingAfter: 0));
+    buffer.write(
+      '<w:tr><w:tc><w:tcPr><w:tcW w:w="9200" w:type="dxa"/>'
+      '<w:tcMar><w:top w:w="30" w:type="dxa"/><w:bottom w:w="50" w:type="dxa"/>'
+      '<w:left w:w="100" w:type="dxa"/></w:tcMar></w:tcPr>',
+    );
+    buffer.write(
+      _richLineXml([
+        _Run('0 – Muito Ruim    ', sizePt: 8),
+        _Run('1 – Ruim    ', sizePt: 8),
+        _Run('2 – Regular    ', sizePt: 8),
+        _Run('3 – Bom    ', sizePt: 8),
+        _Run('4 – Muito Bom    ', sizePt: 8),
+        _Run('5 – Atende Plenamente', sizePt: 8),
+      ], spacingAfter: 0),
+    );
     buffer.write('</w:tc></w:tr>');
 
     buffer.write('</w:tbl>');
@@ -371,13 +494,17 @@ class _DocxBuilder {
 
   String _richLineXml(List<_Run> runs, {required int spacingAfter}) {
     final buffer = StringBuffer();
-    buffer.write('<w:p><w:pPr><w:spacing w:after="$spacingAfter" w:line="240" w:lineRule="auto"/></w:pPr>');
+    buffer.write(
+      '<w:p><w:pPr><w:spacing w:after="$spacingAfter" w:line="240" w:lineRule="auto"/></w:pPr>',
+    );
     for (final r in runs) {
       final b = r.bold ? '<w:b/>' : '';
       final halfPoints = (r.sizePt * 2).round();
-      buffer.write('<w:r><w:rPr>$b<w:rFonts w:ascii="$_fontFamily" w:hAnsi="$_fontFamily"/>'
-          '<w:sz w:val="$halfPoints"/></w:rPr>'
-          '<w:t xml:space="preserve">${_escapeXml(r.text)}</w:t></w:r>');
+      buffer.write(
+        '<w:r><w:rPr>$b<w:rFonts w:ascii="$_fontFamily" w:hAnsi="$_fontFamily"/>'
+        '<w:sz w:val="$halfPoints"/></w:rPr>'
+        '<w:t xml:space="preserve">${_escapeXml(r.text)}</w:t></w:r>',
+      );
     }
     buffer.write('</w:p>');
     return buffer.toString();
@@ -394,13 +521,13 @@ class _DocxBuilder {
   /// que tudo caiba na página.
   void addPhotoGrid(List<Uint8List> rawImages) {
     if (rawImages.isEmpty) return;
-    
+
     // Lógica Dinâmica: Se tiver mais de 6 fotos, comprime usando 4 colunas
     // Caso contrário, usa 3 colunas (padrão mais espaçoso).
     final cols = rawImages.length > 6 ? 4 : 3;
-    final colWidth = (9200 / cols).floor(); 
+    final colWidth = (9200 / cols).floor();
     // Largura total em EMU é em torno de 5.250.000 (equivale a margens de página normais)
-    final imgMaxWidthEmu = (5250000 / cols).floor(); 
+    final imgMaxWidthEmu = (5250000 / cols).floor();
 
     final buffer = StringBuffer();
     buffer.write('<w:tbl>');
@@ -415,11 +542,15 @@ class _DocxBuilder {
       buffer.write('<w:tr>');
       for (var c = 0; c < cols; c++) {
         final idx = i + c;
-        buffer.write('<w:tc><w:tcPr><w:tcW w:w="$colWidth" w:type="dxa"/>'
-            '<w:tcMar><w:top w:w="40" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/>'
-            '<w:left w:w="40" w:type="dxa"/><w:right w:w="40" w:type="dxa"/></w:tcMar></w:tcPr>');
+        buffer.write(
+          '<w:tc><w:tcPr><w:tcW w:w="$colWidth" w:type="dxa"/>'
+          '<w:tcMar><w:top w:w="40" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/>'
+          '<w:left w:w="40" w:type="dxa"/><w:right w:w="40" w:type="dxa"/></w:tcMar></w:tcPr>',
+        );
         if (idx < rawImages.length) {
-          buffer.write(_imageParagraphXml(rawImages[idx], maxWidthEmu: imgMaxWidthEmu));
+          buffer.write(
+            _imageParagraphXml(rawImages[idx], maxWidthEmu: imgMaxWidthEmu),
+          );
         } else {
           buffer.write(_paragraphXml('', sizePt: 1, spacingAfter: 0));
         }
@@ -432,8 +563,7 @@ class _DocxBuilder {
     _body.write(buffer.toString());
   }
 
-  /// Gera o XML de um parágrafo contendo uma foto em resolução original,
-  /// respeitando a proporção real (aplicando orientação EXIF). Retorna
+  /// Insere os bytes da foto já otimizada, respeitando sua proporção. Retorna
   /// um parágrafo vazio se a imagem não puder ser decodificada.
   String _imageParagraphXml(Uint8List rawBytes, {required int maxWidthEmu}) {
     final prepared = _prepareImage(rawBytes, maxWidthEmu: maxWidthEmu);
@@ -442,7 +572,13 @@ class _DocxBuilder {
 
     _imgCounter++;
     final rId = 'rIdImg$_imgCounter';
-    _images.add(_ImagePart(rId: rId, fileName: 'image$_imgCounter.${photo.extension}', bytes: photo.bytes));
+    _images.add(
+      _ImagePart(
+        rId: rId,
+        fileName: 'image$_imgCounter.${photo.extension}',
+        bytes: photo.bytes,
+      ),
+    );
 
     return '''
       <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0" w:before="0"/></w:pPr>
@@ -474,7 +610,10 @@ class _DocxBuilder {
   }
 
   /// Ajusta somente o tamanho de exibição na página, nunca os pixels.
-  (ReportPhoto, int, int)? _prepareImage(Uint8List rawBytes, {int maxWidthEmu = 3200000}) {
+  (ReportPhoto, int, int)? _prepareImage(
+    Uint8List rawBytes, {
+    int maxWidthEmu = 3200000,
+  }) {
     final photo = ReportPhoto.prepare(rawBytes);
     if (photo == null) return null;
     final heightEmu = (maxWidthEmu * photo.height / photo.width).round();
@@ -483,7 +622,8 @@ class _DocxBuilder {
 
   // ---- Baixo nível ----
 
-  String _tblPrXml({required String borderColor, required int borderSz}) => '''
+  String _tblPrXml({required String borderColor, required int borderSz}) =>
+      '''
       <w:tblPr>
         <w:tblW w:w="5000" w:type="pct"/>
         <w:tblBorders>
@@ -546,11 +686,20 @@ class _DocxBuilder {
     addText('_rels/.rels', _rootRelsXml());
     addText('word/_rels/document.xml.rels', _documentRelsXml());
     addText('word/document.xml', _documentXml());
-    addText('word/settings.xml', '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:doNotAutoCompressPictures/></w:settings>''');
+    addText(
+      'word/settings.xml',
+      '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:doNotAutoCompressPictures/></w:settings>''',
+    );
 
     for (final imgPart in _images) {
-      archive.addFile(ArchiveFile('word/media/${imgPart.fileName}', imgPart.bytes.length, imgPart.bytes));
+      archive.addFile(
+        ArchiveFile(
+          'word/media/${imgPart.fileName}',
+          imgPart.bytes.length,
+          imgPart.bytes,
+        )..compress = false,
+      );
     }
 
     final zipData = ZipEncoder().encode(archive);
@@ -559,7 +708,9 @@ class _DocxBuilder {
 
   String _contentTypesXml() {
     final hasJpg = _images.any((i) => i.fileName.endsWith('.jpg'));
-    final jpgOverride = hasJpg ? '<Default Extension="jpg" ContentType="image/jpeg"/>' : '';
+    final jpgOverride = hasJpg
+        ? '<Default Extension="jpg" ContentType="image/jpeg"/>'
+        : '';
     return '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
@@ -571,15 +722,18 @@ class _DocxBuilder {
 </Types>''';
   }
 
-  String _rootRelsXml() => '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  String _rootRelsXml() =>
+      '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
 </Relationships>''';
 
   String _documentRelsXml() {
     final rels = _images
-        .map((imgPart) =>
-            '<Relationship Id="${imgPart.rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${imgPart.fileName}"/>')
+        .map(
+          (imgPart) =>
+              '<Relationship Id="${imgPart.rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${imgPart.fileName}"/>',
+        )
         .join('\n');
     return '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -588,7 +742,8 @@ class _DocxBuilder {
 </Relationships>''';
   }
 
-  String _documentXml() => '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  String _documentXml() =>
+      '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
             xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
             xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"

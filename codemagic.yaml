@@ -12,6 +12,10 @@ workflows:
             cp -R temp_scaffold/android .
             rm -rf temp_scaffold
           fi
+      - name: Configurar navegação inferior por gesto
+        script: |
+          python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+          python3 scripts/install_android_navigation.py
       - name: Adicionar permissões (câmera, fotos, arquivos)
         script: |
           perl -0777 -pi -e 's#<application#<uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>\n    <application#' android/app/src/main/AndroidManifest.xml
@@ -37,7 +41,7 @@ workflows:
           dart run flutter_native_splash:create
       - name: Verificar questionários, relatórios e histórico
         script: |
-          flutter analyze --no-fatal-infos lib/core/constants lib/domain/entities lib/utils/docx_generator.dart lib/utils/report_photo.dart lib/presentation/widgets/evidence_picker.dart lib/presentation/screens/opening_screen.dart lib/presentation/screens/history_screen.dart lib/presentation/screens/indicators_screen.dart lib/presentation/widgets/header_form.dart lib/presentation/screens/audit_form_screen.dart lib/presentation/providers/audit_provider.dart lib/utils/batch_docx_exporter.dart lib/main.dart test
+          flutter analyze --no-fatal-infos lib/core/constants lib/domain/entities lib/utils/docx_generator.dart lib/utils/report_photo.dart lib/utils/photo_optimizer.dart lib/utils/evidence_photo_store.dart lib/presentation/widgets/evidence_picker.dart lib/presentation/widgets/android_navigation_policy.dart lib/presentation/widgets/score_dropdown.dart lib/presentation/screens/opening_screen.dart lib/presentation/screens/history_screen.dart lib/presentation/screens/indicators_screen.dart lib/presentation/widgets/header_form.dart lib/presentation/screens/audit_form_screen.dart lib/presentation/providers/audit_provider.dart lib/utils/batch_docx_exporter.dart lib/main.dart test
           flutter test
       - name: Ajustar compileSdk do plugin de abertura para 36
         script: |

@@ -10,11 +10,12 @@ import 'data/repositories/audit_repository_impl.dart';
 import 'presentation/providers/audit_provider.dart';
 import 'presentation/screens/history_screen.dart';
 import 'presentation/screens/opening_screen.dart';
+import 'presentation/widgets/android_navigation_policy.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  runApp(const Auditoria5SApp());
+  runApp(const AndroidNavigationPolicy(child: Auditoria5SApp()));
 }
 
 class Auditoria5SApp extends StatefulWidget {
@@ -59,9 +60,9 @@ class _Auditoria5SAppState extends State<Auditoria5SApp> {
 
     // Arquivo .5s recebido enquanto o app já está aberto (em segundo plano).
     _intentSub = ReceiveSharingIntent.instance.getMediaStream().listen(
-          _handleSharedFiles,
-          onError: (_) {},
-        );
+      _handleSharedFiles,
+      onError: (_) {},
+    );
 
     // Arquivo .5s que abriu o app agora mesmo (app estava fechado e o
     // usuário tocou no arquivo recebido pelo WhatsApp/e-mail/etc.).
@@ -91,11 +92,13 @@ class _Auditoria5SAppState extends State<Auditoria5SApp> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Importar')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Importar'),
+          ),
         ],
       ),
     );
@@ -123,10 +126,7 @@ class _Auditoria5SAppState extends State<Auditoria5SApp> {
           fit: StackFit.expand,
           children: [
             // Mount the history immediately so its database loads during intro.
-            Offstage(
-              offstage: !_openingComplete,
-              child: const HistoryScreen(),
-            ),
+            Offstage(offstage: !_openingComplete, child: const HistoryScreen()),
             if (!_openingComplete) OpeningScreen(onFinished: _finishOpening),
           ],
         ),

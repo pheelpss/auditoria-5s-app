@@ -36,6 +36,9 @@ class AuditProvider extends ChangeNotifier {
   AuditFilter get filter => _filter;
 
   bool isLoading = false;
+  Map<String, dynamic>? _newAuditDefaults;
+  final Set<String> _savedNewDrafts = {};
+  Future<void> _saveQueue = Future<void>.value();
 
   void startNewAudit() {
     _current = Audit(
@@ -47,6 +50,7 @@ class AuditProvider extends ChangeNotifier {
       data: DateTime.now(),
       mesReferencia: _mesAtual(),
     );
+    _newAuditDefaults = _current!.toMap();
     _previous = null;
     notifyListeners();
   }
@@ -54,10 +58,13 @@ class AuditProvider extends ChangeNotifier {
   void startNewAuditFor({required String area, String? mesReferencia}) {
     startNewAudit();
     updateHeader(area: area, mesReferencia: mesReferencia);
+    // Setor, mês e data iniciais não foram preenchidos pelo auditor.
+    _newAuditDefaults = _current!.toMap();
   }
 
   void editAudit(Audit audit) {
     _current = audit;
+    _newAuditDefaults = null;
     _previous = null;
     notifyListeners();
     _refreshPrevious();
@@ -65,8 +72,18 @@ class AuditProvider extends ChangeNotifier {
 
   String _mesAtual() {
     const meses = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro',
     ];
     return meses[DateTime.now().month - 1];
   }
@@ -120,7 +137,9 @@ class AuditProvider extends ChangeNotifier {
       beforeDate: requestedDate,
       excludeId: a.id,
     );
-    if (_current?.id == a.id && a.area == requestedArea && a.data == requestedDate) {
+    if (_current?.id == a.id &&
+        a.area == requestedArea &&
+        a.data == requestedDate) {
       _previous = found != null && a.hasSameQuestions(found) ? found : null;
       notifyListeners();
     }
@@ -140,7 +159,7 @@ class AuditProvider extends ChangeNotifier {
 
   double? get previousNotaGeral => _previous?.notaGeral;
 
-  void setScore(String categoryCode, String number, int score) {
+  void setScore(String categoryCode, String number, int? score) {
     final a = _current;
     if (a == null) return;
     final item = a.items.firstWhere(
@@ -160,17 +179,69 @@ class AuditProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> saveCurrent() async {
+  bool _hasDraftContent(Audit audit, Map<String, dynamic> defaults) {
+    if (audit.items.any((item) => item.score != null) ||
+        audit.evidences.isNotEmpty) {
+      return true;
+    }
+    if ([
+      audit.responsavel,
+      audit.auditor,
+      audit.acompanhante,
+      audit.comentarios,
+    ].any((text) => text.trim().isNotEmpty)) {
+      return true;
+    }
+    final initialDate = DateTime.parse(defaults['data'] as String);
+    return audit.area.trim() != (defaults['area'] as String).trim() ||
+        audit.mesReferencia != defaults['mesReferencia'] ||
+        audit.data.year != initialDate.year ||
+        audit.data.month != initialDate.month ||
+        audit.data.day != initialDate.day;
+  }
+
+  Future<void> saveCurrent() {
     final a = _current;
-    // Opening a form is not a draft until an area has been selected.
-    // All automatic saves (back, comments and evidence) pass through here.
-    if (a == null || a.area.trim().isEmpty) return;
-    isLoading = true;
-    notifyListeners();
-    await repository.saveAudit(a);
-    isLoading = false;
-    notifyListeners();
-    await loadHistory();
+    if (a == null) return Future<void>.value();
+    final defaults = _newAuditDefaults;
+    final keep = defaults == null || _hasDraftContent(a, defaults);
+    // Captura os dados agora: digitação rápida/voltar não troca o conteúdo
+    // de uma gravação pendente nem deixa uma gravação antiga recriar o vazio.
+    final snapshot = Audit.fromMap(
+      a.toMap(),
+      items: a.items
+          .map((item) => AuditItem.fromMap(item.toMap(a.id)))
+          .toList(),
+      evidences: List<Evidence>.from(a.evidences),
+    );
+    final operation = _saveQueue.then((_) async {
+      if (!keep) {
+        if (_savedNewDrafts.contains(snapshot.id)) {
+          await repository.deleteAudit(snapshot.id);
+          _savedNewDrafts.remove(snapshot.id);
+          _allAudits.removeWhere((audit) => audit.id == snapshot.id);
+          await loadHistory();
+        }
+        return;
+      }
+      isLoading = true;
+      notifyListeners();
+      try {
+        await repository.saveAudit(snapshot);
+        _allAudits = [
+          ..._allAudits.where((audit) => audit.id != snapshot.id),
+          snapshot,
+        ];
+        if (defaults != null) _savedNewDrafts.add(snapshot.id);
+        await loadHistory();
+      } finally {
+        isLoading = false;
+        notifyListeners();
+      }
+    });
+    // Uma falha é devolvida ao chamador sem bloquear as próximas gravações.
+    _saveQueue = operation.catchError((Object error) {});
+    return operation;
   }
 
   Future<void> loadHistory({AuditFilter? filter}) async {
@@ -184,6 +255,7 @@ class AuditProvider extends ChangeNotifier {
 
   Future<void> deleteAudit(String id) async {
     await repository.deleteAudit(id);
+    _allAudits.removeWhere((audit) => audit.id == id);
     await loadHistory();
   }
 
@@ -210,7 +282,8 @@ class AuditProvider extends ChangeNotifier {
         isLoading = false;
         notifyListeners();
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Nenhuma auditoria para exportar.')));
+          const SnackBar(content: Text('Nenhuma auditoria para exportar.')),
+        );
         return;
       }
 
@@ -229,7 +302,9 @@ class AuditProvider extends ChangeNotifier {
           if (await file.exists()) {
             final bytes = await file.readAsBytes();
             final ext = ev.fileName.split('.').last;
-            archive.addFile(ArchiveFile('media/${ev.id}.$ext', bytes.length, bytes));
+            archive.addFile(
+              ArchiveFile('media/${ev.id}.$ext', bytes.length, bytes),
+            );
           }
         }
       }
@@ -239,23 +314,27 @@ class AuditProvider extends ChangeNotifier {
 
       final tempDir = await getTemporaryDirectory();
       final dateStr = DateTime.now().toIso8601String().substring(0, 10);
-      
+
       // Arquivo salvo estritamente com a extensão .5s
-      final exportFile = File('${tempDir.path}/Backup_Auditoria_5S_$dateStr.5s');
-      
+      final exportFile = File(
+        '${tempDir.path}/Backup_Auditoria_5S_$dateStr.5s',
+      );
+
       final zipBytes = ZipEncoder().encode(archive);
       await exportFile.writeAsBytes(zipBytes!);
 
       isLoading = false;
       notifyListeners();
 
-      await Share.shareXFiles([XFile(exportFile.path)], text: 'Segue o arquivo de backup das auditorias 5S.');
+      await Share.shareXFiles([
+        XFile(exportFile.path),
+      ], text: 'Segue o arquivo de backup das auditorias 5S.');
     } catch (e) {
       isLoading = false;
       notifyListeners();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro ao gerar arquivo: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Erro ao gerar arquivo: $e')));
       }
     }
   }
@@ -289,7 +368,8 @@ class AuditProvider extends ChangeNotifier {
       final archive = ZipDecoder().decodeBytes(bytes);
 
       final jsonFile = archive.findFile('data.json');
-      if (jsonFile == null) throw Exception('Arquivo inválido ou incompatível.');
+      if (jsonFile == null)
+        throw Exception('Arquivo inválido ou incompatível.');
 
       final jsonString = utf8.decode(jsonFile.content as List<int>);
       final List<dynamic> jsonList = jsonDecode(jsonString);
@@ -315,13 +395,15 @@ class AuditProvider extends ChangeNotifier {
             newPath = localFile.path;
           }
 
-          restoredEvidences.add(Evidence(
-            id: ev.id,
-            categoryCode: ev.categoryCode,
-            filePath: newPath,
-            fileName: ev.fileName,
-            type: ev.type,
-          ));
+          restoredEvidences.add(
+            Evidence(
+              id: ev.id,
+              categoryCode: ev.categoryCode,
+              filePath: newPath,
+              fileName: ev.fileName,
+              type: ev.type,
+            ),
+          );
         }
 
         final restoredItems = <AuditItem>[];
@@ -345,16 +427,21 @@ class AuditProvider extends ChangeNotifier {
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Auditorias importadas com sucesso!')));
+          const SnackBar(content: Text('Auditorias importadas com sucesso!')),
+        );
       }
     } catch (e) {
       isLoading = false;
       notifyListeners();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Erro ao importar. Certifique-se de que o arquivo .5s é válido.')));
+          const SnackBar(
+            content: Text(
+              'Erro ao importar. Certifique-se de que o arquivo .5s é válido.',
+            ),
+          ),
+        );
       }
     }
   }
-
 }

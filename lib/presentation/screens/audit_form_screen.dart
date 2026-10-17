@@ -20,7 +20,7 @@ class AuditFormScreen extends StatelessWidget {
     final provider = context.watch<AuditProvider>();
     final audit = provider.current!;
 
-    // Ao sair, salva como rascunho somente se uma área foi selecionada.
+    // O provider descarta formulários novos que terminaram sem conteúdo.
     return PopScope(
       canPop: true,
       onPopInvoked: (didPop) {
@@ -32,22 +32,29 @@ class AuditFormScreen extends StatelessWidget {
           // Botão manual de salvar foi removido para incentivar o auto-save
         ),
         body: ListView(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 100), // Espaçamento reduzido
+          padding: const EdgeInsets.fromLTRB(
+            8,
+            8,
+            8,
+            100,
+          ), // Espaçamento reduzido
           children: [
             const HeaderForm(),
             const SizedBox(height: 4),
             if (audit.items.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(12),
-                child: Text('Selecione a área auditada para carregar as perguntas.'),
+                child: Text(
+                  'Selecione a área auditada para carregar as perguntas.',
+                ),
               ),
-            
+
             // Loop de categorias (1S ao 5S)
             if (audit.items.isNotEmpty)
               for (final cat in fiveSCategories) CategorySection(category: cat),
-            
+
             const SizedBox(height: 8),
-            
+
             // --- NOVA SEÇÃO ÚNICA DE EVIDÊNCIAS ---
             Card(
               margin: EdgeInsets.zero,
@@ -56,11 +63,20 @@ class AuditFormScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Evidências da Auditoria', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const Text(
+                      'Evidências da Auditoria',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       'Tire fotos ou anexe arquivos e PDFs gerais desta auditoria aqui.',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     EvidencePicker(
@@ -74,7 +90,7 @@ class AuditFormScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 12),
 
             Card(
@@ -85,9 +101,19 @@ class AuditFormScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Resultado Geral', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    const Text(
+                      'Resultado Geral',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    ScoreIndicator(label: 'Nota Geral 5S', score: audit.notaGeral, big: true),
+                    ScoreIndicator(
+                      label: 'Nota Geral 5S',
+                      score: audit.notaGeral,
+                      big: true,
+                    ),
                     if (provider.previousNotaGeral != null) ...[
                       const SizedBox(height: 8),
                       const Divider(height: 1),
@@ -101,14 +127,14 @@ class AuditFormScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 10),
-            
+
             TextField(
               minLines: 2,
               maxLines: 5,
               decoration: const InputDecoration(
-                labelText: 'Comentários (opcional)', 
+                labelText: 'Comentários (opcional)',
                 isDense: true,
                 border: OutlineInputBorder(),
               ),
@@ -124,19 +150,23 @@ class AuditFormScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: FilledButton.icon(
-              onPressed: audit.items.isEmpty ? null : () {
-                // Esconde o teclado caso esteja aberto
-                FocusScope.of(context).unfocus();
-                
-                // Salva o rascunho atual antes de ir pra tela de revisão
-                provider.saveCurrent();
-                
-                // Navega para a tela de Preview
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AuditPreviewScreen()),
-                );
-              },
+              onPressed: audit.items.isEmpty
+                  ? null
+                  : () {
+                      // Esconde o teclado caso esteja aberto
+                      FocusScope.of(context).unfocus();
+
+                      // Salva o rascunho atual antes de ir pra tela de revisão
+                      provider.saveCurrent();
+
+                      // Navega para a tela de Preview
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AuditPreviewScreen(),
+                        ),
+                      );
+                    },
               icon: const Icon(Icons.fact_check_outlined),
               label: const Text('Revisar e Gerar Relatório'),
             ),

@@ -6,12 +6,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/entities/evidence.dart';
+import '../../utils/evidence_photo_store.dart';
 import '../screens/evidence_gallery_screen.dart';
 
 /// Área global de "Evidências": permite tirar foto, escolher da
 /// galeria ou anexar arquivos, mostra miniaturas e permite gerenciar
 /// tudo de forma centralizada.
-class EvidencePicker extends StatelessWidget {
+class EvidencePicker extends StatefulWidget {
   final List<Evidence> evidences;
   final Function(List<Evidence>) onChanged;
 
@@ -21,22 +22,46 @@ class EvidencePicker extends StatelessWidget {
     required this.onChanged,
   });
 
+  @override
+  State<EvidencePicker> createState() => _EvidencePickerState();
+}
+
+class _EvidencePickerState extends State<EvidencePicker> {
+  bool _preparing = false;
+  List<Evidence> get evidences => widget.evidences;
+  void onChanged(List<Evidence> values) => widget.onChanged(values);
+
   Future<void> _pickPhoto(BuildContext context, ImageSource source) async {
-    final picker = ImagePicker();
-    // Sem limite de dimensões ou qualidade: preserva a imagem retornada.
-    final xfile = await picker.pickImage(source: source);
-    if (xfile == null) return;
-    
-    final newEvidence = Evidence(
-      id: const Uuid().v4(),
-      categoryCode: 'GLOBAL',
-      filePath: xfile.path,
-      fileName: xfile.name,
-      type: EvidenceType.photo,
-    );
-    
-    final updatedList = List<Evidence>.from(evidences)..add(newEvidence);
-    onChanged(updatedList);
+    if (_preparing) return;
+    setState(() => _preparing = true);
+    try {
+      final xfile = await ImagePicker().pickImage(source: source);
+      if (xfile == null || !mounted) return;
+      final id = const Uuid().v4();
+      final file = await EvidencePhotoStore.saveCaptured(xfile.path, id);
+      if (!mounted) return;
+      onChanged(
+        List<Evidence>.from(evidences)..add(
+          Evidence(
+            id: id,
+            categoryCode: 'GLOBAL',
+            filePath: file.path,
+            fileName: '${xfile.name.replaceFirst(RegExp(r'\.[^.]+$'), '')}.jpg',
+            type: EvidenceType.photo,
+          ),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Não foi possível preparar a foto. Tente novamente.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _preparing = false);
+    }
   }
 
   Future<void> _pickFile(BuildContext context) async {
@@ -46,7 +71,7 @@ class EvidencePicker extends StatelessWidget {
     );
     if (result == null || result.files.single.path == null) return;
     final file = result.files.single;
-    
+
     final newEvidence = Evidence(
       id: const Uuid().v4(),
       categoryCode: 'GLOBAL',
@@ -54,18 +79,23 @@ class EvidencePicker extends StatelessWidget {
       fileName: file.name,
       type: EvidenceType.file,
     );
-    
+
     final updatedList = List<Evidence>.from(evidences)..add(newEvidence);
     onChanged(updatedList);
   }
-  
+
   void _openPhoto(BuildContext context, Evidence selected) {
-    final photos = evidences.where((e) => e.type == EvidenceType.photo).toList();
+    final photos = evidences
+        .where((e) => e.type == EvidenceType.photo)
+        .toList();
     final index = photos.indexWhere((e) => e.id == selected.id);
     if (index < 0) return;
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => EvidenceGalleryScreen(photos: photos, initialIndex: index),
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            EvidenceGalleryScreen(photos: photos, initialIndex: index),
+      ),
+    );
   }
 
   void _removeEvidence(String id) {
@@ -85,12 +115,16 @@ class EvidencePicker extends StatelessWidget {
             _ActionChip(
               icon: Icons.photo_camera,
               label: 'Câmera',
-              onTap: () => _pickPhoto(context, ImageSource.camera),
+              onTap: _preparing
+                  ? null
+                  : () => _pickPhoto(context, ImageSource.camera),
             ),
             _ActionChip(
               icon: Icons.photo_library,
               label: 'Galeria',
-              onTap: () => _pickPhoto(context, ImageSource.gallery),
+              onTap: _preparing
+                  ? null
+                  : () => _pickPhoto(context, ImageSource.gallery),
             ),
             _ActionChip(
               icon: Icons.attach_file,
@@ -105,11 +139,13 @@ class EvidencePicker extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: evidences
-                .map((ev) => _EvidenceThumb(
-                      evidence: ev,
-                      onOpen: () => _openPhoto(context, ev),
-                      onRemove: () => _removeEvidence(ev.id),
-                    ))
+                .map(
+                  (ev) => _EvidenceThumb(
+                    evidence: ev,
+                    onOpen: () => _openPhoto(context, ev),
+                    onRemove: () => _removeEvidence(ev.id),
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -121,15 +157,23 @@ class EvidencePicker extends StatelessWidget {
 class _ActionChip extends StatelessWidget {
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
-  
-  const _ActionChip({required this.icon, required this.label, required this.onTap});
+  final VoidCallback? onTap;
+
+  const _ActionChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ActionChip(
       visualDensity: VisualDensity.compact,
-      avatar: Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+      avatar: Icon(
+        icon,
+        size: 18,
+        color: Theme.of(context).colorScheme.primary,
+      ),
       label: Text(label, style: const TextStyle(fontSize: 12)),
       onPressed: onTap,
     );
@@ -140,8 +184,12 @@ class _EvidenceThumb extends StatelessWidget {
   final Evidence evidence;
   final VoidCallback onRemove;
   final VoidCallback onOpen;
-  
-  const _EvidenceThumb({required this.evidence, required this.onRemove, required this.onOpen});
+
+  const _EvidenceThumb({
+    required this.evidence,
+    required this.onRemove,
+    required this.onOpen,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -162,10 +210,15 @@ class _EvidenceThumb extends StatelessWidget {
                   child: GestureDetector(
                     onTap: onOpen,
                     behavior: HitTestBehavior.opaque,
-                    child: Image.file(File(evidence.filePath), fit: BoxFit.cover,
+                    child: Image.file(
+                      File(evidence.filePath),
+                      fit: BoxFit.cover,
                       cacheWidth: 240,
                       errorBuilder: (_, __, ___) => const Center(
-                        child: Icon(Icons.broken_image_outlined, color: Colors.grey),
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
                   ),
@@ -176,7 +229,11 @@ class _EvidenceThumb extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.insert_drive_file, size: 24, color: Colors.grey),
+                        const Icon(
+                          Icons.insert_drive_file,
+                          size: 24,
+                          color: Colors.grey,
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           evidence.fileName,

@@ -11,6 +11,7 @@ import 'package:auditoria_5s/domain/entities/audit.dart';
 import 'package:auditoria_5s/domain/entities/audit_item.dart';
 import 'package:auditoria_5s/domain/entities/evidence.dart';
 import 'package:auditoria_5s/utils/docx_generator.dart';
+import 'package:auditoria_5s/utils/evidence_photo_store.dart';
 
 Audit reportAudit(String area) => Audit(
   id: 'report-$area',
@@ -161,93 +162,102 @@ void main() {
     );
   });
   for (var count = 1; count <= 7; count++) {
-    test('DOCX com $count fotos preserva bytes, resolução e grade', () async {
-      final audit = reportAudit('Teste Titan');
-      final originals = <List<int>>[];
-      for (var i = 0; i < count; i++) {
-        final picture = img.Image(
-          width: i.isEven ? 1600 : 1000,
-          height: i.isEven ? 1000 : 1600,
-        );
-        picture.setPixelRgb(100, 100, 30 + i, 70, 190);
-        final bytes = i.isEven
-            ? img.encodeJpg(picture)
-            : img.encodePng(picture);
-        originals.add(bytes);
-        // Extensão propositalmente diferente: o formato vem dos bytes.
-        final photo = File('${directory.path}/photo$i.data');
-        await photo.writeAsBytes(bytes);
-        audit.evidences.add(
-          Evidence(
-            id: 'photo$i',
-            fileName: 'photo$i.data',
-            filePath: photo.path,
-            type: EvidenceType.photo,
+    test(
+      'DOCX com $count fotos reutiliza JPEG otimizado e preserva a grade',
+      () async {
+        final audit = reportAudit('Teste Titan');
+        final originals = <List<int>>[];
+        for (var i = 0; i < count; i++) {
+          final picture = img.Image(
+            width: i.isEven ? 1600 : 1000,
+            height: i.isEven ? 1000 : 1600,
+          );
+          picture.setPixelRgb(100, 100, 30 + i, 70, 190);
+          final bytes = i.isEven
+              ? img.encodeJpg(picture)
+              : img.encodePng(picture);
+          // Extensão propositalmente diferente: o formato vem dos bytes.
+          final photo = File('${directory.path}/photo$i.data');
+          await photo.writeAsBytes(bytes);
+          audit.evidences.add(
+            Evidence(
+              id: 'photo$i',
+              fileName: 'photo$i.data',
+              filePath: photo.path,
+              type: EvidenceType.photo,
+            ),
+          );
+          originals.add(
+            await (await EvidencePhotoStore.forReport(audit.evidences.last))
+                .readAsBytes(),
+          );
+        }
+        final file = await DocxGenerator.generate(audit);
+        final archive = ZipDecoder().decodeBytes(await file.readAsBytes());
+        final document = documentXml(archive);
+        final media = archive.files
+            .where((f) => f.name.startsWith('word/media/'))
+            .toList();
+        expect(media.length, count);
+        final extents = document.descendants
+            .whereType<XmlElement>()
+            .where((e) => e.name.local == 'extent')
+            .toList();
+        expect(extents.length, count);
+        final widthEmu = (5250000 / (count > 6 ? 4 : 3)).floor();
+        for (var i = 0; i < count; i++) {
+          expect(media[i].content as List<int>, orderedEquals(originals[i]));
+          expect(media[i].name, endsWith('.jpg'));
+          expect(extents[i].getAttribute('cx'), '$widthEmu');
+          final heightEmu = (widthEmu * (i.isEven ? 1000 / 1600 : 1600 / 1000))
+              .round();
+          expect(extents[i].getAttribute('cy'), '$heightEmu');
+        }
+        final relationships = XmlDocument.parse(
+          utf8.decode(
+            archive.findFile('word/_rels/document.xml.rels')!.content
+                as List<int>,
           ),
         );
-      }
-      final file = await DocxGenerator.generate(audit);
-      final archive = ZipDecoder().decodeBytes(await file.readAsBytes());
-      final document = documentXml(archive);
-      final media = archive.files
-          .where((f) => f.name.startsWith('word/media/'))
-          .toList();
-      expect(media.length, count);
-      final extents = document.descendants
-          .whereType<XmlElement>()
-          .where((e) => e.name.local == 'extent')
-          .toList();
-      expect(extents.length, count);
-      final widthEmu = (5250000 / (count > 6 ? 4 : 3)).floor();
-      for (var i = 0; i < count; i++) {
-        expect(media[i].content as List<int>, orderedEquals(originals[i]));
-        expect(media[i].name, endsWith(i.isEven ? '.jpg' : '.png'));
-        expect(extents[i].getAttribute('cx'), '$widthEmu');
-        final heightEmu = (widthEmu * (i.isEven ? 1000 / 1600 : 1600 / 1000))
-            .round();
-        expect(extents[i].getAttribute('cy'), '$heightEmu');
-      }
-      final relationships = XmlDocument.parse(
-        utf8.decode(
-          archive.findFile('word/_rels/document.xml.rels')!.content
-              as List<int>,
-        ),
-      );
-      final rels = relationships.findAllElements('Relationship').toList();
-      expect(rels.map((e) => e.getAttribute('Id')).toSet().length, rels.length);
-      for (final rel in rels) {
+        final rels = relationships.findAllElements('Relationship').toList();
         expect(
-          archive.findFile('word/${rel.getAttribute('Target')}'),
-          isNotNull,
+          rels.map((e) => e.getAttribute('Id')).toSet().length,
+          rels.length,
         );
-      }
-      final types = XmlDocument.parse(
-        utf8.decode(
-          archive.findFile('[Content_Types].xml')!.content as List<int>,
-        ),
-      );
-      expect(
-        types
-            .findAllElements('Default')
-            .any(
-              (e) =>
-                  e.getAttribute('Extension') == 'png' &&
-                  e.getAttribute('ContentType') == 'image/png',
-            ),
-        isTrue,
-      );
-      final settings = XmlDocument.parse(
-        utf8.decode(
-          archive.findFile('word/settings.xml')!.content as List<int>,
-        ),
-      );
-      expect(
-        settings.descendants.whereType<XmlElement>().any(
-          (e) => e.name.local == 'doNotAutoCompressPictures',
-        ),
-        isTrue,
-      );
-      expect(textNodes(document), contains('Teste Titan'));
-    });
+        for (final rel in rels) {
+          expect(
+            archive.findFile('word/${rel.getAttribute('Target')}'),
+            isNotNull,
+          );
+        }
+        final types = XmlDocument.parse(
+          utf8.decode(
+            archive.findFile('[Content_Types].xml')!.content as List<int>,
+          ),
+        );
+        expect(
+          types
+              .findAllElements('Default')
+              .any(
+                (e) =>
+                    e.getAttribute('Extension') == 'png' &&
+                    e.getAttribute('ContentType') == 'image/png',
+              ),
+          isTrue,
+        );
+        final settings = XmlDocument.parse(
+          utf8.decode(
+            archive.findFile('word/settings.xml')!.content as List<int>,
+          ),
+        );
+        expect(
+          settings.descendants.whereType<XmlElement>().any(
+            (e) => e.name.local == 'doNotAutoCompressPictures',
+          ),
+          isTrue,
+        );
+        expect(textNodes(document), contains('Teste Titan'));
+      },
+    );
   }
 }

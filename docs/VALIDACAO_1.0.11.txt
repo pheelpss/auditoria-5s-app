@@ -1,0 +1,16 @@
+Ondexa Android 1.0.11+12 — validação em 16/10/2026
+Base GitHub: a59310d8a9e425174741bba542619313f1beafb8
+Flutter 3.47.7 estável / Dart 3.13.5 / Windows
+
+Suíte completa: 110 testes Flutter aprovados, zero falhas.
+Após ajustar a atualização dos indicadores em memória: 22 testes de rascunhos, retorno de tela e interface repetidos, todos aprovados.
+Integração do scaffold Android: dois testes Python aprovados.
+Análise estática do workflow: zero erros/avisos impeditivos; sete informações de APIs obsoletas existentes.
+Dependências: mesmas 110 versões da base.
+
+Fotos reais de PCP: seis PNG somando 43.021.152 bytes -> seis JPEG somando 3.029.381 bytes.
+Dimensões finais: 1.441 x 2.560 pixels; JPEG 90; redução de 92,96% nos bytes das imagens.
+Esta medição não representa o tempo no Galaxy A54.
+
+O APK e a Activity Kotlin ainda serão compilados no Codemagic.
+A ocultação/revelação da navegação deve ser conferida no aparelho físico após instalar o APK.
