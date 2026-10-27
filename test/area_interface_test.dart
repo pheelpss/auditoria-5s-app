@@ -17,7 +17,9 @@ void main() {
     await tester.pumpWidget(ChangeNotifierProvider.value(value: provider,
       child: MaterialApp(theme: AppTheme.light, home: const Scaffold(
         body: SingleChildScrollView(child: HeaderForm())))));
-    final dropdown = tester.widget<DropdownButton<String>>(find.byType(DropdownButton<String>).first);
+    await tester.pumpAndSettle();
+    final dropdownFinder = find.byType(DropdownButton<String>).first;
+    final dropdown = tester.widget<DropdownButton<String>>(dropdownFinder);
     final headings = dropdown.items!.where((item) => !item.enabled).toList();
     expect(headings.length, 2);
     expect(headings.every((item) => item.value == null), isTrue);
@@ -27,11 +29,22 @@ void main() {
     expect(showroomIndex, greaterThan(values.indexOf('RH')));
     expect(values[showroomIndex + 1], isNull);
     expect(values[showroomIndex + 2], 'Balanceamento');
-    await tester.tap(find.text('Selecione uma área'));
+    await tester.ensureVisible(dropdownFinder);
+    await tester.tap(dropdownFinder);
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Showroom').last, 150,
-        scrollable: find.byType(Scrollable).last);
-    await tester.tap(find.text('Showroom').last);
+    // O texto de dica não recebe eventos; tocar no botão abre a rota real.
+    final menu = find.byType(ListView);
+    expect(menu, findsOneWidget);
+    final menuScrollable = find.descendant(
+        of: menu, matching: find.byType(Scrollable));
+    expect(menuScrollable, findsOneWidget);
+    // Sem .last: a busca pode estar vazia antes de construir o item na rolagem.
+    final showroom = find.text('Showroom');
+    await tester.scrollUntilVisible(showroom, 150,
+        scrollable: menuScrollable);
+    await tester.pumpAndSettle();
+    expect(showroom.hitTestable(), findsOneWidget);
+    await tester.tap(showroom.hitTestable());
     await tester.pumpAndSettle();
     expect(provider.current!.area, 'Showroom');
     expect(provider.current!.items.length, 14);

@@ -1,5 +1,9 @@
 # Ondexa Android 1.0.12+13 — Showroom
 
+## Revisão do teste de interface após o primeiro build
+
+O primeiro log do Codemagic registrou 112 testes aprovados e uma falha no teste de seleção da área. O toque no texto de dica “Selecione uma área” não abriu o menu; a busca seguinte com `.last` encontrou uma lista vazia e lançou `Bad state: No element`. Nesta revisão, o teste toca no `DropdownButton`, confirma que a lista foi aberta e rola dentro do menu usando um finder que aceita ausência inicial do item. Continua verificando a seleção real do Showroom, as 14 perguntas sem notas e o salvamento do rascunho. A execução Flutter desta revisão precisa ser confirmada no próximo build do Codemagic; não há SDK Flutter disponível localmente. Versão e código do aplicativo permanecem 1.0.12+13.
+
 Atualização do projeto Flutter 1.0.11+12 fornecido por Felipe. Escopo confirmado na conversa: adicionar o Showroom ao aplicativo Android; a atualização do Desktop será tratada separadamente.
 
 ## Novo setor
