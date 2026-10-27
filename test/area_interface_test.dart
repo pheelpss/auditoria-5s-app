@@ -22,11 +22,20 @@ void main() {
     expect(headings.length, 2);
     expect(headings.every((item) => item.value == null), isTrue);
     expect(headings.every((item) => item.child is Semantics), isTrue);
+    final values = dropdown.items!.map((item) => item.value).toList();
+    final showroomIndex = values.indexOf('Showroom');
+    expect(showroomIndex, greaterThan(values.indexOf('RH')));
+    expect(values[showroomIndex + 1], isNull);
+    expect(values[showroomIndex + 2], 'Balanceamento');
     await tester.tap(find.text('Selecione uma área'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Eng. Produto').last);
+    await tester.scrollUntilVisible(find.text('Showroom').last, 150,
+        scrollable: find.byType(Scrollable).last);
+    await tester.tap(find.text('Showroom').last);
     await tester.pumpAndSettle();
-    expect(provider.current!.area, 'Eng. Produto');
+    expect(provider.current!.area, 'Showroom');
+    expect(provider.current!.items.length, 14);
+    expect(provider.current!.items.every((item) => item.score == null), isTrue);
     expect(repo.writes, 1);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -34,7 +43,7 @@ void main() {
 
   testWidgets('history distinguishes administrative and production areas', (tester) async {
     final repo = MemoryAuditRepository();
-    for (final area in ['ADM Vendas', 'Solda']) {
+    for (final area in ['Showroom', 'Solda']) {
       repo.audits[area] = Audit(id: area, responsavel: '', area: area,
         auditor: '', acompanhante: '', data: DateTime(2026, 9, 1), mesReferencia: 'Setembro');
     }
@@ -65,7 +74,7 @@ void main() {
     final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
     scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
     await tester.pumpAndSettle();
-    final bottom = tester.getBottomLeft(find.widgetWithText(ActionChip, 'TI')).dy;
+    final bottom = tester.getBottomLeft(find.widgetWithText(ActionChip, 'Showroom')).dy;
     expect(bottom, lessThanOrEqualTo(700 - 48 - 40));
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

@@ -33,4 +33,5 @@ const List<String> auditSectors = [
   'PCP',
   'SST',
   'TI',
+  'Showroom',
 ];

@@ -21,6 +21,7 @@ const expectedCounts = <String, int>{
   'Processos': 21, 'QA': 22, 'Recebimento': 27, 'Repuxo': 26,
   'Resíduos': 24, 'RH': 21, 'Serralheria': 25, 'Solda': 25,
   'SST': 21, 'Teste Titan': 27, 'TI': 21, 'Tubos': 27,
+  'Showroom': 14,
 };
 
 Audit makeAudit(String area, {List<AuditItem>? items}) => Audit(
@@ -38,7 +39,7 @@ class PreviousAuditRepository extends MemoryAuditRepository {
 }
 
 void main() {
-  test('catalog covers exactly the 31 selectable sectors', () {
+  test('catalog covers exactly the 32 selectable sectors', () {
     expect(areaChecklists.keys.toSet(), setoresAuditaveis.toSet());
     expect(areaChecklists.keys.toSet(), expectedCounts.keys.toSet());
     expect(areaChecklists.containsKey('ADM'), isFalse);
@@ -47,11 +48,13 @@ void main() {
     expect(Audit.buildItemsForArea(''), isEmpty);
     expect(Audit.buildItemsForArea('Área inexistente'), isEmpty);
     expect(Audit.buildItemsForArea(' teste titan ').length, 27);
-    expect(expectedCounts.values.reduce((a, b) => a + b), 735);
+    expect(expectedCounts.values.reduce((a, b) => a + b), 749);
   });
 
   final reference = jsonDecode(File('docs/checklists_por_area_2026-10.json')
       .readAsStringSync()) as Map<String, dynamic>;
+  reference.addAll(jsonDecode(File('docs/checklist_showroom_1.0.12.json')
+      .readAsStringSync()) as Map<String, dynamic>);
   for (final entry in expectedCounts.entries) {
     test('${entry.key}: source wording, order, numbering and count', () {
       final audit = makeAudit(entry.key);
@@ -93,11 +96,11 @@ void main() {
     provider.updateHeader(area: 'Almoxarifado');
     expect(provider.current!.items.length, 28);
     provider.setScore('1S', '1.1', 4);
-    provider.updateHeader(area: 'Área Externa');
-    expect(provider.current!.items.length, 16);
+    provider.updateHeader(area: 'Showroom');
+    expect(provider.current!.items.length, 14);
     expect(provider.current!.items.every((i) => i.score == null), isTrue);
     await provider.saveCurrent();
-    expect(provider.history.single.items.length, 16);
+    expect(provider.history.single.items.length, 14);
     await Future<void>.delayed(Duration.zero);
   });
 

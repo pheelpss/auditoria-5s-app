@@ -1,7 +1,7 @@
 import 'five_s_data.dart';
 import 'setores.dart';
 
-/// Questionários específicos dos 31 setores, transcritos dos relatórios.
+/// Questionários específicos dos 32 setores, transcritos dos relatórios.
 /// Ordem preservada; português e falhas de numeração corrigidos.
 /// Este catálogo é usado apenas ao criar/trocar a área de uma auditoria.
 /// Auditorias salvas usam os próprios itens, inclusive ao importar backup.
@@ -2620,6 +2620,71 @@ const Map<String, List<FiveSCategoryDef>> areaChecklists = {
             'OS TREINAMENTOS E OUTRAS PROGRAMAÇÕES SÃO IMPLEMENTADOS PARA SUSTENTAR A ORGANIZAÇÃO DO TRABALHO?'),
         FiveSQuestion('5.4',
             'OS PROCEDIMENTOS DE SEGURANÇA SÃO SEGUIDOS?'),
+      ],
+    ),
+  ],
+  'Showroom': [
+    FiveSCategoryDef(
+      code: '1S',
+      senseName: 'Seiri',
+      title: 'Separação, Utilização e Descarte',
+      questions: [
+        FiveSQuestion('1.1',
+            'EXISTEM ITENS A SEREM DESCARTADOS (OBSOLETOS OU INSERVÍVEIS: PASTAS, PAPÉIS, QUADROS, ETC.)?'),
+        FiveSQuestion('1.2',
+            'EXISTE MATERIAL NÃO PERTINENTE (QUE NÃO PERTENCE) NO AMBIENTE?'),
+        FiveSQuestion('1.3',
+            'EXISTE LOCAL APROPRIADO PARA DESCARTE DE LIXO, MATERIAL OBSOLETO OU PARA RECICLAR?'),
+      ],
+    ),
+    FiveSCategoryDef(
+      code: '2S',
+      senseName: 'Seiton',
+      title: 'Organização',
+      questions: [
+        FiveSQuestion('2.1',
+            'LOCALIZAÇÃO DA ÁREA ESTÁ IDENTIFICADA CLARAMENTE (NOME COM PLACAS E/OU SETAS INDICATIVAS)?'),
+        FiveSQuestion('2.2',
+            'A DISPOSIÇÃO ATUAL DO MOBILIÁRIO PROPICIA ACIDENTES?'),
+        FiveSQuestion('2.3',
+            'ARMÁRIOS, PRATELEIRAS, ARQUIVOS, PORTAS E GAVETAS ESTÃO IDENTIFICADOS (E DENTRO DOS MESMOS)?'),
+      ],
+    ),
+    FiveSCategoryDef(
+      code: '3S',
+      senseName: 'Seiso',
+      title: 'Limpeza',
+      questions: [
+        FiveSQuestion('3.1',
+            'O PISO, AS PAREDES, AS JANELAS E O TETO ESTÃO LIMPOS E BEM APRESENTÁVEIS (SEM PAPÉIS COLADOS)?'),
+        FiveSQuestion('3.2',
+            'AS LÂMPADAS E TOMADAS ESTÃO CONSERVADAS (FIOS EXPOSTOS, PENDURADOS OU SOLTOS)?'),
+        FiveSQuestion('3.3',
+            'É REALIZADA A MANUTENÇÃO PERIÓDICA DO AR-CONDICIONADO E SEUS FILTROS?'),
+        FiveSQuestion('3.4',
+            'OS SANITÁRIOS ESTÃO LIMPOS, CONSERVADOS (COM PAPÉIS E ACESSÓRIOS APROPRIADOS)?'),
+      ],
+    ),
+    FiveSCategoryDef(
+      code: '4S',
+      senseName: 'Seiketsu',
+      title: 'Padronização',
+      questions: [
+        FiveSQuestion('4.1',
+            'O AMBIENTE (SALA/ÁREA) ESTÁ PADRONIZADO COM ETIQUETAS E PLACAS-PADRÃO?'),
+        FiveSQuestion('4.2',
+            'O AMBIENTE FÍSICO DE TRABALHO É FAVORÁVEL À HIGIENE/SAÚDE, SEM CONTAMINAÇÃO DE PÓ?'),
+      ],
+    ),
+    FiveSCategoryDef(
+      code: '5S',
+      senseName: 'Shitsuke',
+      title: 'Disciplina',
+      questions: [
+        FiveSQuestion('5.1',
+            'CARTAZES E LEMBRETES ESTÃO EXIBIDOS NO AMBIENTE DE TRABALHO?'),
+        FiveSQuestion('5.2',
+            'OS TREINAMENTOS E OUTRAS PROGRAMAÇÕES SÃO IMPLEMENTADOS PARA SUSTENTAR A ORGANIZAÇÃO DO TRABALHO?'),
       ],
     ),
   ],

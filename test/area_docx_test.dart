@@ -50,7 +50,7 @@ void main() {
   });
 
   test(
-    'all 31 reports include every area question and the existing summary',
+    'all 32 reports include every area question and the existing summary',
     () async {
       for (final area in setoresAuditaveis) {
         final audit = reportAudit(area);

@@ -32,11 +32,13 @@ const List<String> setoresAuditaveis = [
   'PCP',
   'SST',
   'TI',
+  'Showroom',
 ];
 
 const List<String> setoresAdministrativos = [
   'Eng. Produto', 'Manutenção ADM', 'PCP', 'MKT', 'Processos',
   'SST', 'P&D', 'TI', 'ADM Vendas', 'QA', 'Financeiro', 'RH',
+  'Showroom',
 ];
 
 const List<String> setoresProducao = [
